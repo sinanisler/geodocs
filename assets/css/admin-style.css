@@ -1,0 +1,215 @@
+/**
+ * GEODocs Admin Styles
+ * 
+ * Additional styling for admin settings page
+ * Used alongside Tailwind CSS from CDN
+ * 
+ * @package GEODocs
+ * @version 0.1
+ */
+
+/* Custom animations for admin */
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* Line clamp utility (for older browsers) */
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Model card hover effects */
+.model-card {
+    transition: all 0.2s ease;
+}
+
+.model-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Smooth scrolling for models list */
+#models-list {
+    animation: fadeIn 0.3s ease;
+}
+
+/* Loading spinner animation */
+.fa-spin {
+    animation: fa-spin 1s infinite linear;
+}
+
+@keyframes fa-spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Notification styles */
+.notice {
+    animation: slideInRight 0.3s ease;
+}
+
+/* Custom scrollbar for models list */
+#models-list > div > div::-webkit-scrollbar {
+    width: 8px;
+}
+
+#models-list > div > div::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 4px;
+}
+
+#models-list > div > div::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+#models-list > div > div::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Button hover effects */
+button {
+    transition: all 0.2s ease;
+}
+
+button:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+button:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Input focus styles */
+input:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Statistics cards animation */
+.bg-white {
+    animation: fadeIn 0.5s ease;
+}
+
+/* Badge styles */
+.inline-flex.items-center.gap-2.px-3.py-1.rounded-lg {
+    animation: slideInRight 0.3s ease;
+}
+
+/* Form sections */
+.space-y-6 > * {
+    animation: fadeIn 0.4s ease;
+}
+
+/* Category management grid */
+#categories-manager > div {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+#categories-manager > div:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Progress animation for pulse effect */
+.animate-pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .max-w-6xl {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+    
+    .grid.grid-cols-2 {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Print styles */
+@media print {
+    .notice,
+    button,
+    .fa-external-link-alt {
+        display: none;
+    }
+}
+
+/* Accessibility improvements */
+*:focus-visible {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    button {
+        border: 2px solid currentColor;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Dark mode support (for future) */
+@media (prefers-color-scheme: dark) {
+    /* Reserved for future dark mode implementation */
+}
