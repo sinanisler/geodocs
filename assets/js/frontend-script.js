@@ -234,7 +234,7 @@
                             <p class="geodocs-subtitle">${AppState.documents.length} document${AppState.documents.length !== 1 ? 's' : ''}</p>
                         </div>
                         ${AppState.showUpload ? `
-<button onclick="window.geodocs.showUpload()" class="geodocs-btn geodocs-btn-primary">
+                            <button onclick="window.geodocs.showUpload()" class="geodocs-btn geodocs-btn-primary">
                                 <i class="fas fa-upload"></i>
                                 Upload Document
                             </button>
