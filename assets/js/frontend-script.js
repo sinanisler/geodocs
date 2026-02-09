@@ -121,27 +121,85 @@
         }
     }
     
+    let uploadProgress = 0;
+    let progressInterval = null;
+
     async function uploadDocument(file) {
         try {
             AppState.loading = true;
+            uploadProgress = 0;
             renderApp();
-            
+
             const formData = new FormData();
             formData.append('file', file);
-            
-            const newDoc = await apiRequest('documents', {
-                method: 'POST',
-                body: formData,
+
+            // Create XMLHttpRequest for progress tracking
+            const xhr = new XMLHttpRequest();
+
+            // Track upload progress (0-50%)
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable) {
+                    uploadProgress = Math.round((e.loaded / e.total) * 50);
+                    updateProgressBar();
+                }
             });
-            
-            AppState.documents.unshift(newDoc);
+
+            // When upload completes, show processing (50-90%)
+            xhr.upload.addEventListener('load', () => {
+                uploadProgress = 50;
+                updateProgressBar();
+
+                // Simulate AI processing progress
+                let processingProgress = 50;
+                progressInterval = setInterval(() => {
+                    processingProgress += Math.random() * 5;
+                    if (processingProgress > 90) processingProgress = 90;
+                    uploadProgress = Math.round(processingProgress);
+                    updateProgressBar();
+                }, 300);
+            });
+
+            // Make the actual upload request
+            const response = await new Promise((resolve, reject) => {
+                xhr.open('POST', geodocs.restUrl + 'documents');
+                xhr.setRequestHeader('X-WP-Nonce', geodocs.nonce);
+
+                xhr.onload = () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        resolve(JSON.parse(xhr.responseText));
+                    } else {
+                        reject(new Error('Upload failed'));
+                    }
+                };
+
+                xhr.onerror = () => reject(new Error('Network error'));
+                xhr.send(formData);
+            });
+
+            // Complete the progress
+            if (progressInterval) {
+                clearInterval(progressInterval);
+                progressInterval = null;
+            }
+            uploadProgress = 100;
+            updateProgressBar();
+
+            // Small delay to show 100% completion
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            AppState.documents.unshift(response);
             AppState.currentView = 'dashboard';
-            
+
             showNotification('Document uploaded and analyzed successfully!', 'success');
         } catch (error) {
+            if (progressInterval) {
+                clearInterval(progressInterval);
+                progressInterval = null;
+            }
             console.error('Upload failed:', error);
             showNotification('Upload failed: ' + error.message, 'error');
         } finally {
+            uploadProgress = 0;
             AppState.loading = false;
             renderApp();
         }
@@ -221,93 +279,122 @@
     }
     
     function getDashboardHTML() {
+        const activeCategory = AppState.selectedCategory ?
+            AppState.categories.find(c => c.id === AppState.selectedCategory) : null;
+        const categoryTitle = activeCategory ? activeCategory.name : 'All Documents';
+        const categoryIcon = activeCategory ? activeCategory.icon : '📁';
+
         return `
-            <div class="geodocs-dashboard">
-                <!-- Header -->
-                <div class="geodocs-header">
-                    <div class="geodocs-header-content">
-                        <div>
-                            <h1 class="geodocs-title">
-                                <i class="fas fa-folder-open"></i>
-                                My Documents
-                            </h1>
-                            <p class="geodocs-subtitle">${AppState.documents.length} document${AppState.documents.length !== 1 ? 's' : ''}</p>
-                        </div>
-                        ${AppState.showUpload ? `
-                            <button onclick="window.geodocs.showUpload()" class="geodocs-btn geodocs-btn-primary">
-                                <i class="fas fa-upload"></i>
-                                Upload Document
-                            </button>
-                        ` : ''}
-                    </div>
-                </div>
-                
-                ${AppState.showSearch || AppState.showFilters ? `
-                    <!-- Search & Filter -->
-                    <div class="geodocs-filters">
-                        ${AppState.showSearch ? `
-                            <div class="geodocs-search-wrapper">
-                                <i class="fas fa-search geodocs-search-icon"></i>
-                                <input 
-                                    type="text" 
-                                    id="geodocs-search-input"
-                                    placeholder="Search documents..." 
-                                    value="${escapeHtml(AppState.searchQuery)}"
-                                    class="geodocs-search-input"
-                                >
+            <div class="geodocs-app-layout">
+                ${AppState.showFilters ? `
+                    <!-- Left Sidebar -->
+                    <aside class="geodocs-sidebar">
+                        <div class="geodocs-sidebar-header">
+                            <div class="geodocs-logo">
+                                <i class="fas fa-file-alt"></i>
+                                <span>GEODocs</span>
                             </div>
-                        ` : ''}
-                        
-                        ${AppState.showFilters ? `
-                            <!-- Category Filter -->
-                            <div class="geodocs-category-filter">
-                                <button 
-                                    onclick="window.geodocs.filterByCategory(null)"
-                                    class="geodocs-category-chip ${!AppState.selectedCategory ? 'active' : ''}"
-                                >
-                                    <i class="fas fa-th"></i>
-                                    All Categories
+                            ${AppState.showUpload ? `
+                                <button onclick="window.geodocs.showUpload()" class="geodocs-btn geodocs-btn-primary geodocs-btn-block">
+                                    <i class="fas fa-plus"></i>
+                                    Upload New
                                 </button>
-                                ${AppState.categories.map(cat => `
-                                    <button 
-                                        onclick="window.geodocs.filterByCategory(${cat.id})"
-                                        class="geodocs-category-chip ${AppState.selectedCategory === cat.id ? 'active' : ''}"
-                                    >
-                                        <span class="category-icon">${cat.icon}</span>
-                                        <span>${escapeHtml(cat.name)}</span>
-                                        ${cat.count > 0 ? `<span class="category-count">${cat.count}</span>` : ''}
-                                    </button>
-                                `).join('')}
+                            ` : ''}
+                        </div>
+
+                        <nav class="geodocs-sidebar-nav">
+                            <div class="geodocs-nav-section">
+                                <h3 class="geodocs-nav-title">Categories</h3>
+                                <ul class="geodocs-nav-list">
+                                    <li>
+                                        <button
+                                            onclick="window.geodocs.filterByCategory(null)"
+                                            class="geodocs-nav-item ${!AppState.selectedCategory ? 'active' : ''}"
+                                        >
+                                            <span class="geodocs-nav-icon">📁</span>
+                                            <span class="geodocs-nav-label">All Documents</span>
+                                            <span class="geodocs-nav-badge">${AppState.documents.length}</span>
+                                        </button>
+                                    </li>
+                                    ${AppState.categories.map(cat => `
+                                        <li>
+                                            <button
+                                                onclick="window.geodocs.filterByCategory(${cat.id})"
+                                                class="geodocs-nav-item ${AppState.selectedCategory === cat.id ? 'active' : ''}"
+                                            >
+                                                <span class="geodocs-nav-icon">${cat.icon}</span>
+                                                <span class="geodocs-nav-label">${escapeHtml(cat.name)}</span>
+                                                ${cat.count > 0 ? `<span class="geodocs-nav-badge">${cat.count}</span>` : ''}
+                                            </button>
+                                        </li>
+                                    `).join('')}
+                                </ul>
+                            </div>
+                        </nav>
+                    </aside>
+                ` : ''}
+
+                <!-- Main Content -->
+                <main class="geodocs-main">
+                    <!-- Top Bar -->
+                    <div class="geodocs-topbar">
+                        <div class="geodocs-topbar-left">
+                            <h1 class="geodocs-page-heading">
+                                <span class="geodocs-page-icon">${categoryIcon}</span>
+                                ${categoryTitle}
+                            </h1>
+                            <p class="geodocs-page-count">${AppState.documents.length} ${AppState.documents.length === 1 ? 'document' : 'documents'}</p>
+                        </div>
+                        <div class="geodocs-topbar-right">
+                            ${!AppState.showFilters && AppState.showUpload ? `
+                                <button onclick="window.geodocs.showUpload()" class="geodocs-btn geodocs-btn-primary">
+                                    <i class="fas fa-upload"></i>
+                                    Upload
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+
+                    <!-- Search & Toolbar -->
+                    <div class="geodocs-content-header">
+                        ${AppState.showSearch ? `
+                            <div class="geodocs-search-box">
+                                <i class="fas fa-search"></i>
+                                <input
+                                    type="text"
+                                    id="geodocs-search-input"
+                                    placeholder="Search documents..."
+                                    value="${escapeHtml(AppState.searchQuery)}"
+                                >
                             </div>
                         ` : ''}
+
+                        <div class="geodocs-view-switcher">
+                            <button
+                                onclick="window.geodocs.setViewMode('grid')"
+                                class="geodocs-view-btn ${AppState.viewMode === 'grid' ? 'active' : ''}"
+                                title="Grid View"
+                            >
+                                <i class="fas fa-th"></i>
+                            </button>
+                            <button
+                                onclick="window.geodocs.setViewMode('list')"
+                                class="geodocs-view-btn ${AppState.viewMode === 'list' ? 'active' : ''}"
+                                title="List View"
+                            >
+                                <i class="fas fa-list"></i>
+                            </button>
+                        </div>
                     </div>
-                ` : ''}
-                
-                <!-- View Mode Toggle -->
-                <div class="geodocs-toolbar">
-                    <div class="geodocs-view-toggle">
-                        <button 
-                            onclick="window.geodocs.setViewMode('grid')"
-                            class="geodocs-view-btn ${AppState.viewMode === 'grid' ? 'active' : ''}"
-                            title="Grid View"
-                        >
-                            <i class="fas fa-th-large"></i>
-                        </button>
-                        <button 
-                            onclick="window.geodocs.setViewMode('list')"
-                            class="geodocs-view-btn ${AppState.viewMode === 'list' ? 'active' : ''}"
-                            title="List View"
-                        >
-                            <i class="fas fa-list"></i>
-                        </button>
+
+                    <!-- Documents -->
+                    <div class="geodocs-content">
+                        ${AppState.loading ? getLoadingHTML() : getDocumentsHTML()}
                     </div>
-                </div>
-                
-                <!-- Documents -->
-                ${AppState.loading ? getLoadingHTML() : getDocumentsHTML()}
-                
-                <!-- Pagination -->
-                ${AppState.totalPages > 1 ? getPaginationHTML() : ''}
+
+                    <!-- Pagination -->
+                    ${AppState.totalPages > 1 ? getPaginationHTML() : ''}
+                </main>
             </div>
         `;
     }
@@ -480,17 +567,55 @@
     }
     
     function getUploadProgressHTML() {
+        const phase = uploadProgress < 50 ? 'Uploading file...' : uploadProgress < 100 ? 'AI analyzing document...' : 'Complete!';
+        const icon = uploadProgress < 50 ? 'fa-cloud-upload-alt' : uploadProgress < 100 ? 'fa-robot' : 'fa-check-circle';
+
         return `
             <div class="geodocs-upload-progress">
-                <i class="fas fa-robot geodocs-ai-icon"></i>
-                <h3>Analyzing Document...</h3>
-                <p>Our AI is reading and categorizing your document</p>
+                <i class="fas ${icon} geodocs-ai-icon"></i>
+                <h3>${phase}</h3>
+                <p>${uploadProgress < 50 ? 'Transferring your document to the server' : 'Our AI is reading and categorizing your document'}</p>
                 <div class="geodocs-progress-bar">
-                    <div class="geodocs-progress-fill"></div>
+                    <div class="geodocs-progress-fill" style="width: ${uploadProgress}%"></div>
                 </div>
-                <p class="geodocs-progress-text">This usually takes 5-10 seconds</p>
+                <p class="geodocs-progress-text">
+                    <strong>${uploadProgress}%</strong> complete
+                    ${uploadProgress >= 50 && uploadProgress < 100 ? ' - This usually takes 5-10 seconds' : ''}
+                </p>
             </div>
         `;
+    }
+
+    function updateProgressBar() {
+        const progressFill = document.querySelector('.geodocs-progress-fill');
+        const progressText = document.querySelector('.geodocs-progress-text');
+        const phaseTitle = document.querySelector('.geodocs-upload-progress h3');
+        const phaseDesc = document.querySelector('.geodocs-upload-progress p:not(.geodocs-progress-text)');
+        const icon = document.querySelector('.geodocs-upload-progress i');
+
+        if (progressFill) {
+            progressFill.style.width = uploadProgress + '%';
+        }
+
+        if (phaseTitle && phaseDesc && icon) {
+            if (uploadProgress < 50) {
+                icon.className = 'fas fa-cloud-upload-alt geodocs-ai-icon';
+                phaseTitle.textContent = 'Uploading file...';
+                phaseDesc.textContent = 'Transferring your document to the server';
+            } else if (uploadProgress < 100) {
+                icon.className = 'fas fa-robot geodocs-ai-icon';
+                phaseTitle.textContent = 'AI analyzing document...';
+                phaseDesc.textContent = 'Our AI is reading and categorizing your document';
+            } else {
+                icon.className = 'fas fa-check-circle geodocs-ai-icon';
+                phaseTitle.textContent = 'Complete!';
+                phaseDesc.textContent = 'Your document has been successfully processed';
+            }
+        }
+
+        if (progressText) {
+            progressText.innerHTML = `<strong>${uploadProgress}%</strong> complete${uploadProgress >= 50 && uploadProgress < 100 ? ' - This usually takes 5-10 seconds' : ''}`;
+        }
     }
     
     function getDocumentDetailHTML() {
