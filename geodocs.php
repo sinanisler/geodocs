@@ -329,29 +329,40 @@ class GEODocs {
      * Enqueue frontend scripts
      */
     public function enqueue_frontend_scripts() {
-        // More lenient check - enqueue on singular pages (works with page builders)
-        // The shortcode itself will check if user is logged in
+        // Only load on singular pages
         if (!is_singular()) {
             return;
         }
 
-        // Check if shortcode exists - but don't fail if page builders hide it
+        // Check if shortcode exists
         global $post;
         $has_shortcode = false;
 
         if (is_a($post, 'WP_Post')) {
-            // Check post content
             if (has_shortcode($post->post_content, 'geodocs')) {
                 $has_shortcode = true;
             }
-
-            // Also check for common page builder meta fields
+            // Check page builders
             $page_builder_content = get_post_meta($post->ID, '_elementor_data', true);
             if (!$has_shortcode && !empty($page_builder_content)) {
                 $has_shortcode = strpos($page_builder_content, '[geodocs]') !== false ||
                                  strpos($page_builder_content, 'geodocs') !== false;
             }
         }
+
+        if (!$has_shortcode) {
+            return;
+        }
+
+        // Always load Font Awesome (CSS only, safe)
+        wp_enqueue_style('font-awesome', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css', [], '6.4.0');
+
+        // STOP HERE FOR GUESTS - Do not load any JS
+        if (!is_user_logged_in()) {
+            return;
+        }
+
+        // Register a local script handle to attach everything to (more reliable than CDN)
 
         // If we can't detect the shortcode, enqueue anyway on pages/posts
         // The overhead is minimal and ensures it works with all page builders
@@ -2763,10 +2774,16 @@ Return ONLY valid JSON in this exact format:
     public function render_frontend_shortcode($atts) {
         // Check if user is logged in
         if (!is_user_logged_in()) {
-            return '<div class="geodocs-login-required p-12 text-center bg-white rounded-lg shadow-sm">
-                <i class="fas fa-lock text-6xl text-slate-300 mb-4"></i>
-                <p class="text-lg text-slate-700 mb-4">' . __('Please log in to access.', 'geodocs') . '</p>
-                <a href="' . wp_login_url(get_permalink()) . '" class="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">' . __('Log In', 'geodocs') . '</a>
+            // Inline styles for guests (since Tailwind JS is not loaded)
+            $style_container = 'padding: 3rem; text-align: center; background-color: #fff; border-radius: 0.5rem; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); max-width: 600px; margin: 2rem auto; border: 1px solid #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;';
+            $style_icon = 'font-size: 4rem; color: #cbd5e1; margin-bottom: 1.5rem; display: block;';
+            $style_text = 'font-size: 1.25rem; color: #334155; margin-bottom: 2rem; font-weight: 500;';
+            $style_btn = 'display: inline-block; padding: 0.75rem 2rem; background-color: #2563eb; color: #fff; border-radius: 0.5rem; text-decoration: none; font-weight: 600; transition: background-color 0.2s;';
+
+            return '<div class="geodocs-login-required" style="' . esc_attr($style_container) . '">
+                <i class="fas fa-lock" style="' . esc_attr($style_icon) . '"></i>
+                <p style="' . esc_attr($style_text) . '">' . __('Please log in to access your documents.', 'geodocs') . '</p>
+                <a href="' . wp_login_url(get_permalink()) . '" style="' . esc_attr($style_btn) . '">' . __('Log In', 'geodocs') . '</a>
             </div>';
         }
 
