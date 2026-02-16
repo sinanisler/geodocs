@@ -470,6 +470,7 @@ class GEODocs {
         }
         .category-item {
             position: relative;
+            display:flex
         }
         .category-actions {
             opacity: 0;
