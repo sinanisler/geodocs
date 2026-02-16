@@ -997,64 +997,69 @@ class GeoDocsApp {
         const container = document.getElementById('categories-filter');
         const mobileContainer = document.getElementById('mobile-categories-list');
         
-        let html = `
-            <button class="group w-full px-3 py-2 rounded-md text-left transition-all ${!this.selectedCategory ? 'bg-black text-white font-medium' : 'text-gray-700 hover:bg-gray-100'}"
-                    onclick="app.filterByCategory(null)">
-                <div class="flex items-center gap-2">
-                    <i class="fas fa-th-large text-sm"></i>
-                    <span class="flex-1 text-sm">All Documents</span>
-                    <span class="text-xs ${!this.selectedCategory ? 'text-white' : 'text-gray-400'}">${this.currentDocuments.length}</span>
-                </div>
-            </button>
-        `;
-
-        // Add drag and drop support for each category
-        geodocs.categories.forEach((cat, index) => {
-            const isActive = this.selectedCategory === cat.id;
-            const count = this.getCategoryDocCount(cat.id);
-            html += `
-                <div class="group category-drop-zone category-item"
-                     draggable="true"
-                     data-category-id="${cat.id}"
-                     data-category-index="${index}"
-                     ondragstart="app.handleCategoryDragStart(event, ${cat.id})"
-                     ondragend="app.handleCategoryDragEnd(event)"
-                     ondragover="app.handleCategoryDragOver(event)"
-                     ondragleave="app.handleCategoryDragLeave(event)"
-                     ondrop="app.handleCategoryDrop(event, ${cat.id})">
-                    <button class="w-full px-3 py-2 rounded-md text-left transition-all relative ${isActive ? 'bg-black text-white font-medium' : 'text-gray-700 hover:bg-gray-100'}"
-                            onclick="app.filterByCategory(${cat.id})">
-                        <div class="flex items-center gap-2 ">
-                            <i class="fas fa-grip-vertical text-xs text-gray-400 cursor-grab opacity-0 group-hover:opacity-100 transition-opacity mr-1" style="margin-left: -1rem; margin-right: 0.25rem;" title="Drag to reorder"></i>
-                            <span class="text-base">${cat.icon}</span>
-                            <span class="flex-1 truncate text-sm">${cat.name}</span>
-                            <span class="text-xs ${isActive ? 'text-white' : 'text-gray-400'}">${count}</span>
-                        </div>
-                        <div class="category-actions">
-                            <button onclick="event.stopPropagation(); app.toggleCategoryMenu(${cat.id})"
-                                    class="p-1.5 hover:bg-gray-100 rounded transition-colors"
-                                    title="Options">
-                                <i class="fas fa-ellipsis-v text-sm text-gray-600"></i>
-                            </button>
-                            <div id="category-menu-backdrop-${cat.id}" class="category-menu-backdrop" onclick="app.closeCategoryMenu(${cat.id})"></div>
-                            <div id="category-menu-${cat.id}" class="category-menu-dropdown">
-                                <button onclick="event.stopPropagation(); app.renameCategory(${cat.id}); app.closeCategoryMenu(${cat.id});"
-                                        class="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 transition-colors">
-                                    <i class="fas fa-pen text-xs mr-2"></i>Rename
-                                </button>
-                                <button onclick="event.stopPropagation(); app.deleteCategory(${cat.id}); app.closeCategoryMenu(${cat.id});"
-                                        class="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors">
-                                    <i class="fas fa-trash text-xs mr-2"></i>Delete
-                                </button>
-                            </div>
-                        </div>
-                    </button>
-                </div>
+        const generateCategoryList = (isMobile = false) => {
+            const prefix = isMobile ? 'mobile-' : '';
+            
+            let html = `
+                <button class="group w-full px-3 py-2 rounded-md text-left transition-all ${!this.selectedCategory ? 'bg-black text-white font-medium' : 'text-gray-700 hover:bg-gray-100'}"
+                        onclick="app.filterByCategory(null)">
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-th-large text-sm"></i>
+                        <span class="flex-1 text-sm">All Documents</span>
+                        <span class="text-xs ${!this.selectedCategory ? 'text-white' : 'text-gray-400'}">${this.currentDocuments.length}</span>
+                    </div>
+                </button>
             `;
-        });
 
-        if (container) container.innerHTML = html;
-        if (mobileContainer) mobileContainer.innerHTML = html;
+            // Add drag and drop support for each category
+            geodocs.categories.forEach((cat, index) => {
+                const isActive = this.selectedCategory === cat.id;
+                const count = this.getCategoryDocCount(cat.id);
+                html += `
+                    <div class="group category-drop-zone category-item"
+                         draggable="true"
+                         data-category-id="${cat.id}"
+                         data-category-index="${index}"
+                         ondragstart="app.handleCategoryDragStart(event, ${cat.id})"
+                         ondragend="app.handleCategoryDragEnd(event)"
+                         ondragover="app.handleCategoryDragOver(event)"
+                         ondragleave="app.handleCategoryDragLeave(event)"
+                         ondrop="app.handleCategoryDrop(event, ${cat.id})">
+                        <button class="w-full px-3 py-2 rounded-md text-left transition-all relative ${isActive ? 'bg-black text-white font-medium' : 'text-gray-700 hover:bg-gray-100'}"
+                                onclick="app.filterByCategory(${cat.id})">
+                            <div class="flex items-center gap-2 ">
+                                <i class="fas fa-grip-vertical text-xs text-gray-400 cursor-grab opacity-0 group-hover:opacity-100 transition-opacity mr-1" style="margin-left: -1rem; margin-right: 0.25rem;" title="Drag to reorder"></i>
+                                <span class="text-base">${cat.icon}</span>
+                                <span class="flex-1 truncate text-sm">${cat.name}</span>
+                                <span class="text-xs ${isActive ? 'text-white' : 'text-gray-400'}">${count}</span>
+                            </div>
+                            <div class="category-actions">
+                                <button onclick="event.stopPropagation(); app.toggleCategoryMenu(${cat.id}, '${prefix}')"
+                                        class="p-1.5 hover:bg-gray-100 rounded transition-colors"
+                                        title="Options">
+                                    <i class="fas fa-ellipsis-v text-sm text-gray-600"></i>
+                                </button>
+                                <div id="${prefix}category-menu-backdrop-${cat.id}" class="category-menu-backdrop" onclick="app.closeCategoryMenu(${cat.id}, '${prefix}')"></div>
+                                <div id="${prefix}category-menu-${cat.id}" class="category-menu-dropdown">
+                                    <button onclick="event.stopPropagation(); app.renameCategory(${cat.id}); app.closeCategoryMenu(${cat.id}, '${prefix}');"
+                                            class="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 transition-colors">
+                                        <i class="fas fa-pen text-xs mr-2"></i>Rename
+                                    </button>
+                                    <button onclick="event.stopPropagation(); app.deleteCategory(${cat.id}); app.closeCategoryMenu(${cat.id}, '${prefix}');"
+                                            class="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors">
+                                        <i class="fas fa-trash text-xs mr-2"></i>Delete
+                                    </button>
+                                </div>
+                            </div>
+                        </button>
+                    </div>
+                `;
+            });
+            return html;
+        };
+
+        if (container) container.innerHTML = generateCategoryList(false);
+        if (mobileContainer) mobileContainer.innerHTML = generateCategoryList(true);
     }
 
     getCategoryDocCount(categoryId) {
@@ -1557,9 +1562,9 @@ class GeoDocsApp {
         console.log('[GEODocs] Toggle view mode');
     }
 
-    toggleCategoryMenu(categoryId) {
-        const menu = document.getElementById(`category-menu-${categoryId}`);
-        const backdrop = document.getElementById(`category-menu-backdrop-${categoryId}`);
+    toggleCategoryMenu(categoryId, prefix = '') {
+        const menu = document.getElementById(`${prefix}category-menu-${categoryId}`);
+        const backdrop = document.getElementById(`${prefix}category-menu-backdrop-${categoryId}`);
         const allMenus = document.querySelectorAll('.category-menu-dropdown');
         const allBackdrops = document.querySelectorAll('.category-menu-backdrop');
         
@@ -1598,9 +1603,9 @@ class GeoDocsApp {
         }
     }
 
-    closeCategoryMenu(categoryId) {
-        const menu = document.getElementById(`category-menu-${categoryId}`);
-        const backdrop = document.getElementById(`category-menu-backdrop-${categoryId}`);
+    closeCategoryMenu(categoryId, prefix = '') {
+        const menu = document.getElementById(`${prefix}category-menu-${categoryId}`);
+        const backdrop = document.getElementById(`${prefix}category-menu-backdrop-${categoryId}`);
         if (menu) menu.classList.remove('active');
         if (backdrop) backdrop.classList.remove('active');
     }
