@@ -903,12 +903,6 @@ class GeoDocsApp {
                                 <i class="fas fa-save mr-2"></i>Save Changes
                             </button>
                         </form>
-                        <div class="mt-6 pt-6 border-t border-gray-200">
-                            <a href="<?php echo wp_logout_url(get_permalink()); ?>"
-                               class="block w-full px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium text-center">
-                                <i class="fas fa-sign-out-alt mr-2"></i>Logout
-                            </a>
-                        </div>
                     </div>
                 </div>
             </div>
