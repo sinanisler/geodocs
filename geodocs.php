@@ -664,6 +664,8 @@ class GeoDocsApp {
                         </div>
                     </div>
                 </div>
+            </div>
+        `;
 
         this.renderCategories();
     }
