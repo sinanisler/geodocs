@@ -506,7 +506,9 @@ class GEODocs {
             opacity: 0;
             transition: opacity 0.2s ease;
         }
-        .category-item:hover .fa-grip-vertical,
+        .category-item:hover .fa-grip-vertical {
+            opacity: 1;
+        }
         @media (max-width: 768px) {
             .category-item .fa-grip-vertical {
                 opacity: 0.5 !important;
