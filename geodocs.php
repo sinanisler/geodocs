@@ -447,6 +447,13 @@ class GEODocs {
         .geodocs-pulse {
             animation: pulse 1.5s ease-in-out infinite;
         }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .geodocs-spin {
+            animation: spin 1s linear infinite;
+        }
         .line-clamp-2 {
             display: -webkit-box;
             -webkit-line-clamp: 2;
@@ -703,7 +710,10 @@ class GeoDocsApp {
                         <!-- Upload Progress -->
                         <div id="upload-progress" class="hidden border-t border-gray-200 p-3 bg-gray-50">
                             <div class="flex items-center justify-between mb-2">
-                                <h4 class="text-xs font-semibold text-black">Processing</h4>
+                                <h4 class="text-xs font-semibold text-black flex items-center gap-2">
+                                    <i class="fas fa-spinner geodocs-spin"></i>
+                                    Processing
+                                </h4>
                                 <span id="queue-counter" class="text-xs text-gray-600">0/0</span>
                             </div>
                             <div class="w-full bg-gray-200 rounded-full h-1.5">
@@ -713,7 +723,7 @@ class GeoDocsApp {
                     </div>
 
                     <!-- Main Content Area -->
-                    <div class="flex-1 overflow-y-auto bg-gray-50">
+                    <div class="flex-1 overflow-y-auto bg-gray-50 Processing">
                         <!-- Documents Header -->
                         <div id="documents-header" class="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
                             <div>
@@ -862,16 +872,24 @@ class GeoDocsApp {
     // Toast notification helper
     showToast(message, type = 'success') {
         if (typeof Toastify !== 'undefined') {
+            const colors = {
+                success: '#000',
+                error: '#DC2626',
+                info: '#3B82F6'
+            };
+            
             Toastify({
                 text: message,
-                duration: 3000,
+                duration: type === 'info' ? 2000 : 3000,
                 gravity: 'top',
-                position: 'right',
+                position: 'center', // Center for better mobile visibility
                 style: {
-                    background: type === 'success' ? '#000' : (type === 'error' ? '#DC2626' : '#6B7280'),
+                    background: colors[type] || '#6B7280',
                     borderRadius: '0.5rem',
                     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto',
-                    fontSize: '14px'
+                    fontSize: '14px',
+                    padding: '12px 20px',
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.2)'
                 }
             }).showToast();
         } else {
@@ -922,20 +940,22 @@ class GeoDocsApp {
         // Drag and drop on documents grid
         if (documentsGrid) {
             documentsGrid.addEventListener('dragover', (e) => {
-                if (e.dataTransfer.types.includes('Files')) {
+                // Check if it's a file drag (not document reordering)
+                if (e.dataTransfer.types.includes('Files') && !e.dataTransfer.types.includes('document-id')) {
                     e.preventDefault();
                     documentsGrid.classList.add('drag-over');
                 }
             });
 
             documentsGrid.addEventListener('dragleave', (e) => {
-                if (e.target === documentsGrid) {
+                if (e.target === documentsGrid || e.target.closest('#documents-grid') === null) {
                     documentsGrid.classList.remove('drag-over');
                 }
             });
 
             documentsGrid.addEventListener('drop', (e) => {
-                if (e.dataTransfer.files.length > 0) {
+                // Check if it's a file drop (images)
+                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
                     e.preventDefault();
                     documentsGrid.classList.remove('drag-over');
                     this.handleFiles(e.dataTransfer.files);
@@ -987,6 +1007,8 @@ class GeoDocsApp {
         });
 
         if (!this.processing) {
+            // Track total queue size for progress calculation
+            this.totalQueueSize = this.uploadQueue.length;
             this.processQueue();
         }
     }
@@ -997,15 +1019,25 @@ class GeoDocsApp {
             document.getElementById('upload-progress').classList.add('hidden');
             this.updateProgress(0);
             this.loadDocuments();
-            this.showToast('All uploads completed', 'success');
+            
+            // Show completion notification (especially visible on mobile)
+            const completedMsg = '✓ All uploads completed!';
+            this.showToast(completedMsg, 'success');
+            console.log('[GEODocs] Processing complete');
             return;
         }
 
         this.processing = true;
-        document.getElementById('upload-progress').classList.remove('hidden');
+        const progressEl = document.getElementById('upload-progress');
+        progressEl.classList.remove('hidden');
+        
+        // Show processing notification on first file (especially for mobile users)
+        if (this.uploadQueue.length === this.totalQueueSize) {
+            this.showToast('🔄 Processing documents...', 'info');
+        }
 
         const file = this.uploadQueue.shift();
-        const totalFiles = this.currentDocuments.length + this.uploadQueue.length + 1;
+        const totalFiles = this.totalQueueSize;
         const remaining = this.uploadQueue.length;
         const current = totalFiles - remaining;
 
@@ -1039,7 +1071,10 @@ class GeoDocsApp {
 
             const result = await response.json();
             console.log('[GEODocs] Upload successful:', result);
-            this.showToast(`✓ ${result.title || file.name}`, 'success');
+            
+            // Show success notification with document title and category
+            const categoryInfo = result.category ? ` → ${result.category.icon} ${result.category.name}` : '';
+            this.showToast(`✓ ${result.title}${categoryInfo}`, 'success');
 
         } catch (error) {
             console.error('[GEODocs] Upload error:', error);
