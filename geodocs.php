@@ -1236,12 +1236,105 @@ class GeoDocsApp {
         }
     }
 
-    handleFiles(files) {
-        Array.from(files).forEach(file => {
-            if (file.type.startsWith('image/')) {
+    async compressImageToWebP(file, quality = 0.85, maxWidth = 2000) {
+        return new Promise((resolve, reject) => {
+            // Check if file is an image
+            if (!file.type.startsWith('image/')) {
+                reject(new Error('File is not an image'));
+                return;
+            }
+
+            const reader = new FileReader();
+            
+            reader.onerror = () => {
+                reject(new Error('Failed to read file'));
+            };
+            
+            reader.onload = (event) => {
+                const img = new Image();
+                
+                img.onerror = () => {
+                    reject(new Error('Failed to load image'));
+                };
+                
+                img.onload = () => {
+                    try {
+                        // Create canvas
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+                        
+                        // Resize if image is too large
+                        if (width > maxWidth) {
+                            const ratio = maxWidth / width;
+                            width = maxWidth;
+                            height = Math.round(height * ratio);
+                        }
+                        
+                        canvas.width = width;
+                        canvas.height = height;
+                        
+                        // Draw image on canvas
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        // Convert to WebP blob
+                        canvas.toBlob(
+                            (blob) => {
+                                if (!blob) {
+                                    reject(new Error('Failed to create WebP blob'));
+                                    return;
+                                }
+                                
+                                // Create new file with WebP extension
+                                const originalName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+                                const webpFile = new File(
+                                    [blob],
+                                    `${originalName}.webp`,
+                                    { type: 'image/webp' }
+                                );
+                                
+                                console.log(`[GEODocs] Compressed ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB) → ${webpFile.name} (${(webpFile.size / 1024 / 1024).toFixed(2)}MB)`);
+                                resolve(webpFile);
+                            },
+                            'image/webp',
+                            quality
+                        );
+                    } catch (error) {
+                        reject(error);
+                    }
+                };
+                
+                img.src = event.target.result;
+            };
+            
+            reader.readAsDataURL(file);
+        });
+    }
+
+    async handleFiles(files) {
+        const filesToProcess = Array.from(files).filter(file => file.type.startsWith('image/'));
+        
+        if (filesToProcess.length === 0) {
+            return;
+        }
+        
+        // Show compression notification
+        this.showToast(`🔄 Compressing ${filesToProcess.length} image(s) to WebP...`, 'info');
+        
+        // Process all files and compress to WebP
+        for (const file of filesToProcess) {
+            try {
+                // Compress to WebP with 85% quality and max 2000px width
+                const compressedFile = await this.compressImageToWebP(file, 0.85, 2000);
+                this.uploadQueue.push(compressedFile);
+            } catch (error) {
+                console.error('[GEODocs] Compression error:', error);
+                // If compression fails, add original file
+                this.showToast(`⚠️ Failed to compress ${file.name}, uploading original`, 'error');
                 this.uploadQueue.push(file);
             }
-        });
+        }
 
         if (!this.processing) {
             // Track total queue size for progress calculation
