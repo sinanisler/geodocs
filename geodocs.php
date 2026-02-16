@@ -474,9 +474,60 @@ class GEODocs {
         .category-actions {
             opacity: 0;
             transition: opacity 0.2s ease;
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: white;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            z-index: 10;
         }
         .category-item:hover .category-actions {
             opacity: 1;
+        }
+        @media (max-width: 768px) {
+            .category-actions {
+                opacity: 1;
+            }
+        }
+        .category-menu-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 4px;
+            background: white;
+            border: 1px solid #e5e5e5;
+            border-radius: 0.375rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            min-width: 120px;
+            z-index: 100;
+        }
+        .category-menu-dropdown.active {
+            display: block;
+        }
+        #mobile-bottom-menu {
+            display: none;
+        }
+        @media (max-width: 768px) {
+            #mobile-bottom-menu {
+                display: flex;
+            }
+            .desktop-search {
+                display: none !important;
+            }
+            .desktop-buttons {
+                display: none !important;
+            }
+            .main-content-wrapper {
+                padding-bottom: 80px;
+            }
+        }
+        @media (min-width: 769px) {
+            .mobile-search {
+                display: none !important;
+            }
         }
         .user-dropdown {
             display: none;
@@ -560,37 +611,40 @@ class GeoDocsApp {
                 <!-- Top App Bar -->
                 <div class="bg-white shadow-sm sticky top-0 z-40 border-b border-gray-200">
                     <div class="px-6 py-3 flex items-center justify-between">
-                        <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-3 flex-1">
                             <div class="bg-black text-white rounded-lg p-2">
                                 <i class="fas fa-file-image text-xl"></i>
                             </div>
                             <div>
                                 <h1 class="text-xl font-bold text-black">GEODocs</h1>
                             </div>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <!-- Search Bar -->
-                            <div class="relative w-80">
+                            
+                            <!-- Search Bar - Desktop (Left Side) -->
+                            <div class="desktop-search relative w-80 ml-6">
                                 <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                                 <input type="text" id="search-input" placeholder="Search documents..."
                                        class="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-1 focus:ring-black focus:border-black text-sm">
                             </div>
+                        </div>
+                        
+                        <div class="flex items-center gap-3">
+                            <!-- Action Buttons (Desktop Only) -->
+                            <div class="desktop-buttons flex items-center gap-3">
+                                <button onclick="document.getElementById('file-input').click()"
+                                        class="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors text-sm font-medium flex items-center gap-2">
+                                    <i class="fas fa-upload"></i>
+                                    Select Images
+                                </button>
 
-                            <!-- Action Buttons -->
-                            <button onclick="document.getElementById('file-input').click()"
-                                    class="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors text-sm font-medium flex items-center gap-2">
-                                <i class="fas fa-upload"></i>
-                                Select Images
-                            </button>
-
-                            <button onclick="app.takePicture()"
-                                    class="px-4 py-2 bg-white border border-gray-300 text-black rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium flex items-center gap-2">
-                                <i class="fas fa-camera"></i>
-                                Take Picture
-                            </button>
+                                <button onclick="app.takePicture()"
+                                        class="px-4 py-2 bg-white border border-gray-300 text-black rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium flex items-center gap-2">
+                                    <i class="fas fa-camera"></i>
+                                    Take Picture
+                                </button>
+                            </div>
 
                             <input type="file" id="file-input" multiple accept="image/*" class="hidden">
-                            <input type="file" id="camera-input" accept="image/*" capture="environment" class="hidden">
+                            <input type="file" id="camera-input" accept="image/*" capture="user" class="hidden">
 
                             <!-- User Avatar with Dropdown -->
                             <div class="relative" id="user-menu-container">
@@ -612,10 +666,19 @@ class GeoDocsApp {
                     </div>
                 </div>
 
+                <!-- Search Bar - Mobile -->
+                <div class="mobile-search bg-white border-b border-gray-200 px-4 py-3">
+                    <div class="relative">
+                        <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                        <input type="text" id="search-input-mobile" placeholder="Search documents..."
+                               class="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-1 focus:ring-black focus:border-black text-sm">
+                    </div>
+                </div>
+
                 <!-- Main Content Area: Sidebar + Main -->
-                <div class="flex flex-1 overflow-hidden">
-                    <!-- Left Sidebar -->
-                    <div class="w-60 bg-white border-r border-gray-200 flex flex-col">
+                <div class="flex flex-1 overflow-hidden main-content-wrapper">
+                    <!-- Left Sidebar (Hidden on Mobile) -->
+                    <div class="w-60 bg-white border-r border-gray-200 flex-col hidden md:flex">
                         <!-- Categories List -->
                         <div class="flex-1 overflow-y-auto py-2 px-2">
                             <div class="flex items-center justify-between px-3 py-2 mb-1">
@@ -662,6 +725,47 @@ class GeoDocsApp {
                     </div>
                 </div>
 
+                <!-- Mobile Bottom Menu -->
+                <div id="mobile-bottom-menu" class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 safe-area-inset-bottom">
+                    <div class="flex items-center justify-around py-3 px-2">
+                        <button onclick="document.getElementById('file-input').click()" 
+                                class="flex flex-col items-center gap-1 text-gray-600 hover:text-black transition-colors">
+                            <i class="fas fa-upload text-xl"></i>
+                            <span class="text-xs">Upload</span>
+                        </button>
+                        <button onclick="app.takePicture()" 
+                                class="flex flex-col items-center gap-1 text-gray-600 hover:text-black transition-colors">
+                            <i class="fas fa-camera text-xl"></i>
+                            <span class="text-xs">Camera</span>
+                        </button>
+                        <button onclick="app.toggleMobileCategories()" 
+                                class="flex flex-col items-center gap-1 text-gray-600 hover:text-black transition-colors">
+                            <i class="fas fa-folder text-xl"></i>
+                            <span class="text-xs">Categories</span>
+                        </button>
+                        <button onclick="app.toggleUserMenu()" 
+                                class="flex flex-col items-center gap-1 text-gray-600 hover:text-black transition-colors">
+                            <i class="fas fa-user text-xl"></i>
+                            <span class="text-xs">Profile</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Mobile Categories Sheet -->
+                <div id="mobile-categories-sheet" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden" onclick="app.toggleMobileCategories()">
+                    <div class="fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl max-h-[70vh] overflow-auto" onclick="event.stopPropagation()">
+                        <div class="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+                            <h3 class="font-semibold text-black">Categories</h3>
+                            <button onclick="app.toggleMobileCategories()" class="text-gray-500 hover:text-black">
+                                <i class="fas fa-times text-xl"></i>
+                            </button>
+                        </div>
+                        <div id="mobile-categories-list" class="p-4">
+                            <!-- Categories rendered here -->
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Split Screen Viewer -->
                 <div id="split-viewer" class="geodocs-split-view fixed inset-0 bg-black bg-opacity-80 z-50">
                     <div class="bg-white h-full w-full flex">
@@ -687,6 +791,8 @@ class GeoDocsApp {
 
     renderCategories() {
         const container = document.getElementById('categories-filter');
+        const mobileContainer = document.getElementById('mobile-categories-list');
+        
         let html = `
             <button class="group w-full px-3 py-2 rounded-md text-left transition-all ${!this.selectedCategory ? 'bg-black text-white font-medium' : 'text-gray-700 hover:bg-gray-100'}"
                     onclick="app.filterByCategory(null)">
@@ -708,22 +814,27 @@ class GeoDocsApp {
                      ondragover="event.preventDefault(); this.classList.add('drag-over-category')"
                      ondragleave="this.classList.remove('drag-over-category')"
                      ondrop="app.handleCategoryDrop(event, ${cat.id})">
-                    <button class="w-full px-3 py-2 rounded-md text-left transition-all ${isActive ? 'bg-black text-white font-medium' : 'text-gray-700 hover:bg-gray-100'}"
+                    <button class="w-full px-3 py-2 rounded-md text-left transition-all relative ${isActive ? 'bg-black text-white font-medium' : 'text-gray-700 hover:bg-gray-100'}"
                             onclick="app.filterByCategory(${cat.id})">
-                        <div class="flex items-center gap-2 relative">
+                        <div class="flex items-center gap-2 pr-8">
                             <span class="text-base">${cat.icon}</span>
                             <span class="flex-1 truncate text-sm">${cat.name}</span>
                             <span class="text-xs ${isActive ? 'text-white' : 'text-gray-400'}">${count}</span>
-                            <div class="category-actions flex items-center gap-1 ml-1">
+                        </div>
+                        <div class="category-actions">
+                            <button onclick="event.stopPropagation(); app.toggleCategoryMenu(${cat.id})"
+                                    class="p-1.5 hover:bg-gray-100 rounded transition-colors"
+                                    title="Options">
+                                <i class="fas fa-ellipsis-v text-sm text-gray-600"></i>
+                            </button>
+                            <div id="category-menu-${cat.id}" class="category-menu-dropdown">
                                 <button onclick="event.stopPropagation(); app.renameCategory(${cat.id})"
-                                        class="p-1 text-gray-400 hover:text-black transition-colors"
-                                        title="Rename">
-                                    <i class="fas fa-pen text-xs"></i>
+                                        class="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 transition-colors">
+                                    <i class="fas fa-pen text-xs mr-2"></i>Rename
                                 </button>
                                 <button onclick="event.stopPropagation(); app.deleteCategory(${cat.id})"
-                                        class="p-1 text-gray-400 hover:text-red-600 transition-colors"
-                                        title="Delete">
-                                    <i class="fas fa-times text-xs"></i>
+                                        class="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors">
+                                    <i class="fas fa-trash text-xs mr-2"></i>Delete
                                 </button>
                             </div>
                         </div>
@@ -732,7 +843,8 @@ class GeoDocsApp {
             `;
         });
 
-        container.innerHTML = html;
+        if (container) container.innerHTML = html;
+        if (mobileContainer) mobileContainer.innerHTML = html;
     }
 
     getCategoryDocCount(categoryId) {
@@ -795,7 +907,7 @@ class GeoDocsApp {
             e.target.value = ''; // Reset input
         });
 
-        // Camera input change
+        // Camera input change - only camera
         cameraInput.addEventListener('change', (e) => {
             this.handleFiles(e.target.files);
             e.target.value = ''; // Reset input
@@ -825,16 +937,24 @@ class GeoDocsApp {
             });
         }
 
-        // Search functionality
+        // Search functionality (desktop and mobile)
         const searchInput = document.getElementById('search-input');
+        const searchInputMobile = document.getElementById('search-input-mobile');
         let searchTimeout;
-        searchInput.addEventListener('input', (e) => {
+        
+        const handleSearch = (e) => {
             clearTimeout(searchTimeout);
             searchTimeout = setTimeout(() => {
                 this.searchQuery = e.target.value;
                 this.loadDocuments();
-            }, 300); // Debounce search
-        });
+                // Sync search inputs
+                if (searchInput && e.target !== searchInput) searchInput.value = e.target.value;
+                if (searchInputMobile && e.target !== searchInputMobile) searchInputMobile.value = e.target.value;
+            }, 300);
+        };
+        
+        if (searchInput) searchInput.addEventListener('input', handleSearch);
+        if (searchInputMobile) searchInputMobile.addEventListener('input', handleSearch);
 
         // Close split viewer
         document.getElementById('close-viewer').addEventListener('click', () => {
@@ -1132,6 +1252,40 @@ class GeoDocsApp {
         console.log('[GEODocs] Toggle view mode');
     }
 
+    toggleCategoryMenu(categoryId) {
+        const menu = document.getElementById(`category-menu-${categoryId}`);
+        const allMenus = document.querySelectorAll('.category-menu-dropdown');
+        
+        // Close all other menus
+        allMenus.forEach(m => {
+            if (m !== menu) m.classList.remove('active');
+        });
+        
+        // Toggle current menu
+        if (menu) {
+            menu.classList.toggle('active');
+            
+            // Close when clicking outside
+            if (menu.classList.contains('active')) {
+                setTimeout(() => {
+                    document.addEventListener('click', function closeMenu(e) {
+                        if (!menu.contains(e.target)) {
+                            menu.classList.remove('active');
+                            document.removeEventListener('click', closeMenu);
+                        }
+                    });
+                }, 10);
+            }
+        }
+    }
+
+    toggleMobileCategories() {
+        const sheet = document.getElementById('mobile-categories-sheet');
+        if (sheet) {
+            sheet.classList.toggle('hidden');
+        }
+    }
+
     async viewDocument(id) {
         const doc = this.currentDocuments.find(d => d.id === id);
         if (!doc) return;
@@ -1340,9 +1494,14 @@ if (document.readyState === 'loading') {
             return new WP_Error('not_found', __('Document not found', 'geodocs'), ['status' => 404]);
         }
 
-        // Check ownership
-        if ($post->post_author != get_current_user_id() && !current_user_can('manage_options')) {
-            return new WP_Error('unauthorized', __('Unauthorized', 'geodocs'), ['status' => 403]);
+        // Check ownership - IMPORTANT: Allow document owner OR admin
+        $current_user_id = get_current_user_id();
+        if (!$current_user_id) {
+            return new WP_Error('unauthorized', __('You must be logged in', 'geodocs'), ['status' => 401]);
+        }
+        
+        if ($post->post_author != $current_user_id && !current_user_can('manage_options')) {
+            return new WP_Error('unauthorized', __('Unauthorized access', 'geodocs'), ['status' => 403]);
         }
 
         $file_url = get_post_meta($id, '_geodocs_file_url', true);
@@ -2086,9 +2245,7 @@ Return ONLY valid JSON in this exact format:
                             <div class="geodocs-tab px-6 py-4 font-semibold" data-tab="ai">
                                 <i class="fas fa-robot mr-2"></i><?php _e('AI Configuration', 'geodocs'); ?>
                             </div>
-                            <div class="geodocs-tab px-6 py-4 font-semibold" data-tab="categories">
-                                <i class="fas fa-folder mr-2"></i><?php _e('Categories', 'geodocs'); ?>
-                            </div>
+
                             <div class="geodocs-tab px-6 py-4 font-semibold" data-tab="advanced">
                                 <i class="fas fa-cog mr-2"></i><?php _e('Advanced', 'geodocs'); ?>
                             </div>
@@ -2221,29 +2378,7 @@ Return ONLY valid JSON in this exact format:
                             </div>
                         </div>
 
-                        <!-- Categories Tab -->
-                        <div id="tab-categories" class="geodocs-tab-content">
-                            <h3 class="text-2xl font-bold text-slate-800 mb-6">
-                                <i class="fas fa-folder text-yellow-600 mr-2"></i>Document Categories
-                            </h3>
 
-                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <?php
-                                $categories = get_terms(['taxonomy' => 'geodocs_category', 'hide_empty' => false]);
-                                foreach ($categories as $cat) {
-                                    $icon = get_term_meta($cat->term_id, 'icon', true);
-                                    $color = get_term_meta($cat->term_id, 'color', true);
-                                    ?>
-                                    <div class="<?php echo esc_attr($color); ?> text-white rounded-lg p-6 text-center shadow-sm hover:shadow-md transition">
-                                        <div class="text-4xl mb-3"><?php echo esc_html($icon); ?></div>
-                                        <div class="font-semibold"><?php echo esc_html($cat->name); ?></div>
-                                        <div class="text-sm opacity-90 mt-1"><?php echo esc_html($cat->count); ?> documents</div>
-                                    </div>
-                                    <?php
-                                }
-                                ?>
-                            </div>
-                        </div>
 
                         <!-- Advanced Tab -->
                         <div id="tab-advanced" class="geodocs-tab-content">
