@@ -1,0 +1,114 @@
+name: Plugin Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: '0'
+
+      - name: Get current version
+        id: get_version
+        run: |
+          version=$(grep -oP 'Version:\s*\K[0-9.]+' geodocs.php)
+          echo "Current version: $version"
+          echo "version=$version" >> $GITHUB_ENV
+
+      - name: Bump version if release
+        if: contains(github.event.head_commit.message, 'release')
+        run: |
+          current_version=$(grep -oP 'Version:\s*\K[0-9.]+' geodocs.php)
+          next_version=$(awk -F. '{print $1 "." ($2+1)}' <<< "$current_version")
+
+          # Update version in plugin header comment
+          sed -i "s/Version: $current_version/Version: $next_version/" geodocs.php
+
+          # Update version in PHP constant
+          sed -i "s/define('GEODOCS_VERSION', '$current_version')/define('GEODOCS_VERSION', '$next_version')/" geodocs.php
+
+          echo "new_version=$next_version" >> $GITHUB_ENV
+
+      - name: Commit version bump
+        if: contains(github.event.head_commit.message, 'release')
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add geodocs.php
+          git commit -m "Bump version to ${{ env.new_version }}"
+          git push
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get the latest tag (previous version)
+          latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+
+          # Generate changelog
+          if [ -z "$latest_tag" ]; then
+            # If no previous tag exists, get all commits
+            changelog=$(git log --pretty=format:"- %s (%h)" --no-merges)
+          else
+            # Get commits since the last tag
+            changelog=$(git log ${latest_tag}..HEAD --pretty=format:"- %s (%h)" --no-merges)
+          fi
+
+          # Save changelog to file and environment
+          echo "$changelog" > CHANGELOG.txt
+          echo "CHANGELOG<<EOF" >> $GITHUB_ENV
+          echo "$changelog" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+          echo "previous_tag=$latest_tag" >> $GITHUB_ENV
+
+      - name: Create zip file
+        run: |
+          mkdir -p geodocs
+          rsync -av --exclude='.git' --exclude='.github' --exclude='geodocs' ./ geodocs/
+          zip -r geodocs.zip geodocs
+          rm -rf geodocs
+
+      - name: Create GitHub Release
+        if: contains(github.event.head_commit.message, 'release')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: geodocs.zip
+          tag_name: "v${{ env.new_version }}"
+          name: "Release v${{ env.new_version }}"
+          body: |
+            ## Release v${{ env.new_version }}
+
+            ### Changes in this release:
+            ${{ env.CHANGELOG }}
+
+            ---
+            **Full Changelog**: ${{ env.previous_tag != '' && format('https://github.com/{0}/geodocs/compare/{1}...v{2}', github.repository_owner, env.previous_tag, env.new_version) || format('https://github.com/{0}/geodocs/commits/v{1}', github.repository_owner, env.new_version) }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create GitHub Pre-release
+        if: contains(github.event.head_commit.message, 'alphatag')
+        uses: softprops/action-gh-release@v1
+        with:
+          prerelease: true
+          files: geodocs.zip
+          tag_name: "pre-v${{ env.version }}"
+          name: "Pre-release v${{ env.version }}"
+          body: |
+            ## Pre-release v${{ env.version }}
+
+            ### Changes in this pre-release:
+            ${{ env.CHANGELOG }}
+
+            ---
+            **Note**: This is a pre-release version for testing purposes.
+            **Full Changelog**: ${{ env.previous_tag != '' && format('https://github.com/{0}/geodocs/compare/{1}...pre-v{2}', github.repository_owner, env.previous_tag, env.version) || format('https://github.com/{0}/geodocs/commits/pre-v{1}', github.repository_owner, env.version) }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
