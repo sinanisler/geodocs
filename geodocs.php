@@ -552,7 +552,7 @@ class GEODocs {
             border-radius: 0.375rem;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             min-width: 120px;
-            z-index: 1000;
+            z-index: 10002;
         }
         .category-menu-dropdown.active {
             display: block;
@@ -561,8 +561,8 @@ class GEODocs {
             display: none;
             position: fixed;
             inset: 0;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 9999;
+            background: rgba(0, 0, 0, 0);
+            z-index: 10001;
         }
         .category-menu-backdrop.active {
             display: block;
