@@ -493,7 +493,7 @@ class GEODocs {
             transform: scale(1.02);
         }
         .category-item.drag-over-category::before {
-            content: '';
+            content: \'\';
             position: absolute;
             top: -2px;
             left: 0;
