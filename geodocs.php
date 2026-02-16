@@ -1299,9 +1299,6 @@ class GeoDocsApp {
         const doc = this.currentDocuments.find(d => d.id === id);
         if (!doc) return;
 
-        const doc = this.currentDocuments.find(d => d.id === id);
-        if (!doc) return;
-
         document.getElementById('viewer-image').src = doc.fileUrl;
         document.getElementById('viewer-details').innerHTML = `
             <h2 class="text-xl font-bold text-black mb-4">${doc.title}</h2>
