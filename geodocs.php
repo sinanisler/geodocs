@@ -696,6 +696,10 @@ class GeoDocsApp {
                                         <p class="text-sm font-medium text-black">${geodocs.currentUser.name}</p>
                                         <p class="text-xs text-gray-500">${geodocs.currentUser.email}</p>
                                     </div>
+                                    <button onclick="event.preventDefault(); app.showProfileEdit()"
+                                       class="w-full text-left block px-4 py-2 text-sm text-black hover:bg-gray-50 transition-colors">
+                                        <i class="fas fa-user-edit mr-2"></i>Edit Profile
+                                    </button>
                                     <a href="<?php echo wp_logout_url(get_permalink()); ?>"
                                        class="block px-4 py-2 text-sm text-black hover:bg-gray-50 transition-colors">
                                         <i class="fas fa-sign-out-alt mr-2"></i>Logout
@@ -786,7 +790,7 @@ class GeoDocsApp {
                             <i class="fas fa-folder text-xl"></i>
                             <span class="text-xs">Categories</span>
                         </button>
-                        <button onclick="app.toggleUserMenu()" 
+                        <button onclick="app.toggleMobileUserMenu()" 
                                 class="flex flex-col items-center gap-1 text-gray-600 hover:text-black transition-colors">
                             <i class="fas fa-user text-xl"></i>
                             <span class="text-xs">Profile</span>
@@ -809,6 +813,37 @@ class GeoDocsApp {
                     </div>
                 </div>
 
+                <!-- Mobile User Menu Sheet -->
+                <div id="mobile-user-sheet" class="geodocs-mobile-user-sheet fixed inset-0 bg-black bg-opacity-50 z-50 hidden" onclick="app.toggleMobileUserMenu()">
+                    <div class="fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl" onclick="event.stopPropagation()">
+                        <div class="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+                            <h3 class="font-semibold text-black">Profile</h3>
+                            <button onclick="app.toggleMobileUserMenu()" class="text-gray-500 hover:text-black">
+                                <i class="fas fa-times text-xl"></i>
+                            </button>
+                        </div>
+                        <div class="p-4">
+                            <div class="text-center mb-4">
+                                <div class="bg-black text-white rounded-full w-16 h-16 flex items-center justify-center font-bold text-2xl mx-auto mb-2">
+                                    ${geodocs.currentUser.name.charAt(0).toUpperCase()}
+                                </div>
+                                <p class="font-medium text-black">${geodocs.currentUser.name}</p>
+                                <p class="text-sm text-gray-500">${geodocs.currentUser.email}</p>
+                            </div>
+                            <button onclick="app.showProfileEdit(); app.toggleMobileUserMenu()"
+                                   class="w-full px-4 py-3 text-left text-black hover:bg-gray-50 transition-colors rounded-lg mb-2 flex items-center gap-2">
+                                <i class="fas fa-user-edit text-lg"></i>
+                                <span>Edit Profile</span>
+                            </button>
+                            <a href="<?php echo wp_logout_url(get_permalink()); ?>"
+                               class="block w-full px-4 py-3 text-left text-black hover:bg-gray-50 transition-colors rounded-lg flex items-center gap-2">
+                                <i class="fas fa-sign-out-alt text-lg"></i>
+                                <span>Logout</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Split Screen Viewer -->
                 <div id="split-viewer" class="geodocs-split-viewer geodocs-split-view fixed inset-0 bg-black bg-opacity-80 z-50">
                     <div class="bg-white h-full w-full flex">
@@ -823,6 +858,54 @@ class GeoDocsApp {
                             <div id="viewer-details">
                                 <!-- Details rendered here -->
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Profile Edit Modal -->
+                <div id="profile-edit-modal" class="geodocs-split-view fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center">
+                    <div class="bg-white rounded-2xl max-w-md w-full mx-4 p-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <h2 class="text-2xl font-bold text-black">Edit Profile</h2>
+                            <button id="close-profile-edit" class="text-gray-500 hover:text-black transition-colors">
+                                <i class="fas fa-times text-2xl"></i>
+                            </button>
+                        </div>
+                        <form id="profile-edit-form" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-black mb-2">
+                                    <i class="fas fa-user mr-2"></i>Display Name
+                                </label>
+                                <input type="text" id="profile-name" 
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+                                       placeholder="Your name">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-black mb-2">
+                                    <i class="fas fa-lock mr-2"></i>New Password
+                                </label>
+                                <input type="password" id="profile-password" 
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+                                       placeholder="Leave blank to keep current">
+                                <p class="text-xs text-gray-500 mt-1">Minimum 8 characters</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-black mb-2">
+                                    <i class="fas fa-lock mr-2"></i>Confirm Password
+                                </label>
+                                <input type="password" id="profile-password-confirm" 
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+                                       placeholder="Confirm new password">
+                            </div>
+                            <button type="submit" class="w-full px-4 py-3 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors font-medium">
+                                <i class="fas fa-save mr-2"></i>Save Changes
+                            </button>
+                        </form>
+                        <div class="mt-6 pt-6 border-t border-gray-200">
+                            <a href="<?php echo wp_logout_url(get_permalink()); ?>"
+                               class="block w-full px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium text-center">
+                                <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -1358,6 +1441,106 @@ class GeoDocsApp {
         }
     }
 
+    toggleMobileUserMenu() {
+        const sheet = document.getElementById('mobile-user-sheet');
+        if (sheet) {
+            sheet.classList.toggle('hidden');
+        }
+    }
+
+    async showProfileEdit() {
+        const modal = document.getElementById('profile-edit-modal');
+        
+        // Load current profile data
+        try {
+            const response = await fetch(geodocs.restUrl + 'profile', {
+                headers: { 'X-WP-Nonce': geodocs.nonce }
+            });
+            
+            if (response.ok) {
+                const profile = await response.json();
+                document.getElementById('profile-name').value = profile.name;
+            }
+        } catch (error) {
+            console.error('[GEODocs] Error loading profile:', error);
+        }
+        
+        modal.classList.add('active');
+        
+        // Setup form submission
+        const form = document.getElementById('profile-edit-form');
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('profile-name').value;
+            const password = document.getElementById('profile-password').value;
+            const passwordConfirm = document.getElementById('profile-password-confirm').value;
+            
+            // Validate
+            if (!name) {
+                this.showToast('Please enter your name', 'error');
+                return;
+            }
+            
+            if (password && password !== passwordConfirm) {
+                this.showToast('Passwords do not match', 'error');
+                return;
+            }
+            
+            if (password && password.length < 8) {
+                this.showToast('Password must be at least 8 characters', 'error');
+                return;
+            }
+            
+            // Save profile
+            try {
+                const data = { name };
+                if (password) {
+                    data.password = password;
+                }
+                
+                const response = await fetch(geodocs.restUrl + 'profile', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-WP-Nonce': geodocs.nonce
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                    this.showToast('Profile updated successfully!', 'success');
+                    
+                    // Update current user data
+                    geodocs.currentUser.name = name;
+                    
+                    // Close modal
+                    modal.classList.remove('active');
+                    
+                    // Clear password fields
+                    document.getElementById('profile-password').value = '';
+                    document.getElementById('profile-password-confirm').value = '';
+                    
+                    // Refresh the page to update UI
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    const error = await response.json();
+                    this.showToast(error.message || 'Failed to update profile', 'error');
+                }
+            } catch (error) {
+                console.error('[GEODocs] Error saving profile:', error);
+                this.showToast('Error updating profile', 'error');
+            }
+        };
+        
+        // Close button
+        document.getElementById('close-profile-edit').onclick = () => {
+            modal.classList.remove('active');
+        };
+    }
+
     async viewDocument(id) {
         const doc = this.currentDocuments.find(d => d.id === id);
         if (!doc) return;
@@ -1551,6 +1734,20 @@ if (document.readyState === 'loading') {
                 'methods' => 'POST',
                 'callback' => [$this, 'update_settings'],
                 'permission_callback' => [$this, 'check_admin_permission'],
+            ],
+        ]);
+
+        // Profile endpoints
+        register_rest_route('geodocs/v1', '/profile', [
+            [
+                'methods' => 'GET',
+                'callback' => [$this, 'get_profile'],
+                'permission_callback' => [$this, 'check_user_permission'],
+            ],
+            [
+                'methods' => 'POST',
+                'callback' => [$this, 'update_profile'],
+                'permission_callback' => [$this, 'check_user_permission'],
             ],
         ]);
     }
@@ -2266,6 +2463,59 @@ Return ONLY valid JSON in this exact format:
     }
 
     /**
+     * Get profile
+     */
+    public function get_profile() {
+        $user_id = get_current_user_id();
+        $user = get_userdata($user_id);
+
+        if (!$user) {
+            return new WP_Error('user_not_found', __('User not found', 'geodocs'), ['status' => 404]);
+        }
+
+        return rest_ensure_response([
+            'id' => $user->ID,
+            'name' => $user->display_name,
+            'email' => $user->user_email,
+            'username' => $user->user_login,
+        ]);
+    }
+
+    /**
+     * Update profile
+     */
+    public function update_profile($request) {
+        $user_id = get_current_user_id();
+        $data = $request->get_json_params();
+
+        $user_data = ['ID' => $user_id];
+
+        // Update display name
+        if (isset($data['name']) && !empty($data['name'])) {
+            $user_data['display_name'] = sanitize_text_field($data['name']);
+        }
+
+        // Update password if provided
+        if (isset($data['password']) && !empty($data['password'])) {
+            if (strlen($data['password']) < 8) {
+                return new WP_Error('weak_password', __('Password must be at least 8 characters', 'geodocs'), ['status' => 400]);
+            }
+            $user_data['user_pass'] = $data['password'];
+        }
+
+        $result = wp_update_user($user_data);
+
+        if (is_wp_error($result)) {
+            return $result;
+        }
+
+        return rest_ensure_response([
+            'success' => true,
+            'message' => __('Profile updated successfully', 'geodocs'),
+        ]);
+    }
+
+    /**
      * Get allowed MIME types (images only)
      */
     private function get_allowed_mime_types() {
@@ -2310,7 +2560,7 @@ Return ONLY valid JSON in this exact format:
         if (!is_user_logged_in()) {
             return '<div class="geodocs-login-required p-12 text-center bg-white rounded-lg shadow-sm">
                 <i class="fas fa-lock text-6xl text-slate-300 mb-4"></i>
-                <p class="text-lg text-slate-700 mb-4">' . __('Please log in to access your documents.', 'geodocs') . '</p>
+                <p class="text-lg text-slate-700 mb-4">' . __('Please log in to access.', 'geodocs') . '</p>
                 <a href="' . wp_login_url(get_permalink()) . '" class="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">' . __('Log In', 'geodocs') . '</a>
             </div>';
         }
