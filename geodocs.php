@@ -723,7 +723,7 @@ class GeoDocsApp {
                     </div>
 
                     <!-- Main Content Area -->
-                    <div class="flex-1 overflow-y-auto bg-gray-50 Processing">
+                    <div id="main-document-area" class="geodocs-drop-zone flex-1 overflow-y-auto bg-gray-50">
                         <!-- Documents Header -->
                         <div id="documents-header" class="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
                             <div>
@@ -734,7 +734,7 @@ class GeoDocsApp {
 
                         <!-- Documents Grid (with drop zone) -->
                         <div class="p-6" id="documents-container">
-                            <div id="documents-grid" class="geodocs-drop-zone grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 min-h-[200px]">
+                            <div id="documents-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 min-h-[200px]">
                                 <!-- Documents rendered here -->
                             </div>
                         </div>
@@ -923,7 +923,7 @@ class GeoDocsApp {
     setupEventListeners() {
         const fileInput = document.getElementById('file-input');
         const cameraInput = document.getElementById('camera-input');
-        const documentsGrid = document.getElementById('documents-grid');
+        const mainDocumentArea = document.getElementById('main-document-area');
 
         // File input change
         fileInput.addEventListener('change', (e) => {
@@ -937,27 +937,28 @@ class GeoDocsApp {
             e.target.value = ''; // Reset input
         });
 
-        // Drag and drop on documents grid
-        if (documentsGrid) {
-            documentsGrid.addEventListener('dragover', (e) => {
+        // Drag and drop on entire main document area
+        if (mainDocumentArea) {
+            mainDocumentArea.addEventListener('dragover', (e) => {
                 // Check if it's a file drag (not document reordering)
                 if (e.dataTransfer.types.includes('Files') && !e.dataTransfer.types.includes('document-id')) {
                     e.preventDefault();
-                    documentsGrid.classList.add('drag-over');
+                    mainDocumentArea.classList.add('drag-over');
                 }
             });
 
-            documentsGrid.addEventListener('dragleave', (e) => {
-                if (e.target === documentsGrid || e.target.closest('#documents-grid') === null) {
-                    documentsGrid.classList.remove('drag-over');
+            mainDocumentArea.addEventListener('dragleave', (e) => {
+                // Only remove if leaving the main area completely
+                if (e.target === mainDocumentArea) {
+                    mainDocumentArea.classList.remove('drag-over');
                 }
             });
 
-            documentsGrid.addEventListener('drop', (e) => {
+            mainDocumentArea.addEventListener('drop', (e) => {
                 // Check if it's a file drop (images)
                 if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
                     e.preventDefault();
-                    documentsGrid.classList.remove('drag-over');
+                    mainDocumentArea.classList.remove('drag-over');
                     this.handleFiles(e.dataTransfer.files);
                 }
             });
