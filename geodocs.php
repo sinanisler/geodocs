@@ -593,6 +593,22 @@ class GEODocs {
                 right: 1rem;
                 top: 4rem;
             }
+            /* Responsive Split Viewer */
+            .geodocs-split-viewer .bg-white.h-full.w-full.flex {
+                flex-direction: column !important;
+            }
+            .geodocs-split-viewer .flex-1.p-8 {
+                flex: 0 0 auto !important;
+                height: 40vh !important;
+                min-height: 200px !important;
+                padding: 1rem !important;
+            }
+            .geodocs-split-viewer .w-96 {
+                width: 100% !important;
+                height: 60vh !important;
+                border-left: none !important;
+                border-top: 1px solid #e5e7eb !important;
+            }
         }
         ';
     }
@@ -1579,24 +1595,32 @@ class GeoDocsApp {
         const doc = this.currentDocuments.find(d => d.id === id);
         if (!doc) return;
 
+        // Build category options
+        let categoryOptions = '<option value="">No Category</option>';
+        geodocs.categories.forEach(cat => {
+            const selected = (doc.category && doc.category.id === cat.id) ? 'selected' : '';
+            categoryOptions += `<option value="${cat.id}" ${selected}>${cat.icon} ${cat.name}</option>`;
+        });
+
         document.getElementById('viewer-image').src = doc.fileUrl;
         document.getElementById('viewer-details').innerHTML = `
-            <h2 class="text-xl font-bold text-black mb-4">${doc.title}</h2>
             <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-black mb-2">Document Name</label>
+                    <input type="text" id="edit-title" value="${doc.title}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium focus:ring-1 focus:ring-black focus:border-black">
+                </div>
+                
                 <div>
                     <label class="block text-xs font-semibold text-black mb-2">Description</label>
                     <textarea id="edit-description" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-black focus:border-black" rows="4">${doc.description}</textarea>
                 </div>
 
-                ${doc.category ? `
-                    <div>
-                        <label class="block text-xs font-semibold text-black mb-2">Category</label>
-                        <div class="bg-black text-white px-3 py-2 rounded-lg inline-flex items-center gap-2 text-sm">
-                            <span>${doc.category.icon}</span>
-                            <span>${doc.category.name}</span>
-                        </div>
-                    </div>
-                ` : ''}
+                <div>
+                    <label class="block text-xs font-semibold text-black mb-2">Category</label>
+                    <select id="edit-category" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-black focus:border-black bg-white">
+                        ${categoryOptions}
+                    </select>
+                </div>
 
                 ${Object.keys(doc.metadata).length > 0 ? `
                     <div>
@@ -1627,7 +1651,15 @@ class GeoDocsApp {
     }
 
     async saveDocument(id) {
+        const title = document.getElementById('edit-title').value;
         const description = document.getElementById('edit-description').value;
+        const categoryId = document.getElementById('edit-category').value;
+
+        // Validate title
+        if (!title.trim()) {
+            this.showToast('Document name cannot be empty', 'error');
+            return;
+        }
 
         try {
             const response = await fetch(geodocs.restUrl + 'documents/' + id, {
@@ -1636,7 +1668,11 @@ class GeoDocsApp {
                     'Content-Type': 'application/json',
                     'X-WP-Nonce': geodocs.nonce
                 },
-                body: JSON.stringify({ description })
+                body: JSON.stringify({ 
+                    title: title.trim(),
+                    description: description,
+                    category_id: categoryId ? parseInt(categoryId) : null
+                })
             });
 
             if (response.ok) {
@@ -2177,8 +2213,17 @@ if (document.readyState === 'loading') {
 
         wp_update_post($update_data);
 
-        if (isset($data['categoryId'])) {
-            wp_set_post_terms($id, [(int)$data['categoryId']], 'geodocs_category');
+        // Handle category update - support both camelCase and snake_case
+        if (isset($data['categoryId']) || isset($data['category_id'])) {
+            $category_id = isset($data['category_id']) ? $data['category_id'] : $data['categoryId'];
+            
+            if ($category_id === null || $category_id === '' || $category_id === 0) {
+                // Remove category
+                wp_set_post_terms($id, [], 'geodocs_category');
+            } else {
+                // Set category
+                wp_set_post_terms($id, [(int)$category_id], 'geodocs_category');
+            }
         }
 
         // Log activity
