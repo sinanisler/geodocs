@@ -329,8 +329,12 @@ class GEODocs {
      * Enqueue frontend scripts
      */
     public function enqueue_frontend_scripts() {
+        // SECURITY: Only enqueue scripts for logged-in users
+        if (!is_user_logged_in()) {
+            return;
+        }
+
         // More lenient check - enqueue on singular pages (works with page builders)
-        // The shortcode itself will check if user is logged in
         if (!is_singular()) {
             return;
         }
