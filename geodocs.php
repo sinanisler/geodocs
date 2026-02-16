@@ -324,11 +324,39 @@ class GEODocs {
      * Enqueue frontend scripts
      */
     public function enqueue_frontend_scripts() {
-        // Only enqueue if shortcode is present
-        global $post;
-        if (!is_a($post, 'WP_Post') || !has_shortcode($post->post_content, 'geodocs')) {
+        // More lenient check - enqueue on singular pages (works with page builders)
+        // The shortcode itself will check if user is logged in
+        if (!is_singular()) {
             return;
         }
+
+        // Check if shortcode exists - but don't fail if page builders hide it
+        global $post;
+        $has_shortcode = false;
+
+        if (is_a($post, 'WP_Post')) {
+            // Check post content
+            if (has_shortcode($post->post_content, 'geodocs')) {
+                $has_shortcode = true;
+            }
+
+            // Also check for common page builder meta fields
+            $page_builder_content = get_post_meta($post->ID, '_elementor_data', true);
+            if (!$has_shortcode && !empty($page_builder_content)) {
+                $has_shortcode = strpos($page_builder_content, '[geodocs]') !== false ||
+                                 strpos($page_builder_content, 'geodocs') !== false;
+            }
+        }
+
+        // If we can't detect the shortcode, enqueue anyway on pages/posts
+        // The overhead is minimal and ensures it works with all page builders
+        if (!$has_shortcode && !is_page() && !is_single()) {
+            return;
+        }
+
+        // Register a local script handle to attach everything to (more reliable than CDN)
+        wp_register_script('geodocs-init', '', [], GEODOCS_VERSION, false);
+        wp_enqueue_script('geodocs-init');
 
         // Tailwind CSS
         wp_enqueue_script('tailwind-cdn', 'https://cdn.tailwindcss.com', [], null, false);
@@ -339,8 +367,8 @@ class GEODocs {
         // Inline frontend styles
         wp_add_inline_style('font-awesome', $this->get_frontend_inline_styles());
 
-        // Localize script
-        wp_localize_script('tailwind-cdn', 'geodocs', [
+        // Localize script - attach to our reliable local handle
+        wp_localize_script('geodocs-init', 'geodocs', [
             'restUrl' => rest_url('geodocs/v1/'),
             'nonce' => wp_create_nonce('wp_rest'),
             'currentUser' => [
@@ -354,8 +382,8 @@ class GEODocs {
             'allowedTypes' => explode(',', get_option('geodocs_allowed_file_types', 'jpg,jpeg,png,gif,webp')),
         ]);
 
-        // Inline frontend JS
-        wp_add_inline_script('tailwind-cdn', $this->get_frontend_inline_scripts());
+        // Inline frontend JS - attach to our reliable local handle
+        wp_add_inline_script('geodocs-init', $this->get_frontend_inline_scripts());
     }
 
     /**
@@ -432,9 +460,22 @@ class GeoDocsApp {
     }
 
     init() {
+        console.log('[GEODocs] Initializing app...', {
+            restUrl: geodocs.restUrl,
+            categories: geodocs.categories,
+            currentUser: geodocs.currentUser
+        });
+
+        // Verify geodocs object exists
+        if (typeof geodocs === 'undefined') {
+            console.error('[GEODocs] ERROR: geodocs object not found! Check script enqueuing.');
+            return;
+        }
+
         this.renderApp();
         this.loadDocuments();
         this.setupEventListeners();
+        console.log('[GEODocs] App initialized successfully!');
     }
 
     renderApp() {
@@ -687,13 +728,32 @@ class GeoDocsApp {
         if (this.selectedCategory) url += '&category=' + this.selectedCategory;
         if (this.searchQuery) url += '&search=' + encodeURIComponent(this.searchQuery);
 
-        const response = await fetch(url, {
-            headers: { 'X-WP-Nonce': geodocs.nonce }
-        });
+        console.log('[GEODocs] Loading documents from:', url);
 
-        const data = await response.json();
-        this.currentDocuments = data.documents;
-        this.renderDocuments();
+        try {
+            const response = await fetch(url, {
+                headers: { 'X-WP-Nonce': geodocs.nonce }
+            });
+
+            if (!response.ok) {
+                console.error('[GEODocs] Failed to load documents. Status:', response.status);
+                if (response.status === 404) {
+                    console.error('[GEODocs] 404 Error - REST API route not found. Go to Settings → Permalinks and click Save.');
+                }
+                this.currentDocuments = [];
+                this.renderDocuments();
+                return;
+            }
+
+            const data = await response.json();
+            console.log('[GEODocs] Loaded documents:', data);
+            this.currentDocuments = data.documents;
+            this.renderDocuments();
+        } catch (error) {
+            console.error('[GEODocs] Error loading documents:', error);
+            this.currentDocuments = [];
+            this.renderDocuments();
+        }
     }
 
     renderDocuments() {
@@ -819,9 +879,25 @@ class GeoDocsApp {
 
 // Initialize app
 let app;
-document.addEventListener('DOMContentLoaded', () => {
-    app = new GeoDocsApp();
-});
+
+// More robust initialization that works even if DOMContentLoaded already fired
+function initGeoDocsApp() {
+    const container = document.getElementById('geodocs-app');
+    if (container && !app) {
+        app = new GeoDocsApp();
+    } else if (!container) {
+        // Container not found yet, try again shortly
+        setTimeout(initGeoDocsApp, 100);
+    }
+}
+
+// Try immediate initialization if DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initGeoDocsApp);
+} else {
+    // DOM already loaded, initialize immediately
+    initGeoDocsApp();
+}
         <?php
         return ob_get_clean();
     }
@@ -1687,7 +1763,7 @@ Return ONLY valid JSON in this exact format:
                                 </ul>
                             </div>
 
-                            <div class="bg-slate-50 rounded-lg p-6">
+                            <div class="bg-slate-50 rounded-lg p-6 mb-6">
                                 <h4 class="font-bold text-slate-800 mb-4">Frontend Shortcode</h4>
                                 <p class="text-sm text-slate-700 mb-3">
                                     Use this shortcode to display GEODocs on any page:
@@ -1695,6 +1771,38 @@ Return ONLY valid JSON in this exact format:
                                 <code class="block bg-slate-800 text-green-400 p-4 rounded-lg font-mono text-sm">
                                     [geodocs]
                                 </code>
+                            </div>
+
+                            <div class="bg-yellow-50 border-l-4 border-yellow-500 p-6">
+                                <h4 class="font-bold text-yellow-800 mb-2">
+                                    <i class="fas fa-exclamation-triangle mr-2"></i>Troubleshooting
+                                </h4>
+                                <div class="text-yellow-700 space-y-2">
+                                    <p><strong>If the shortcode doesn't appear:</strong></p>
+                                    <ol class="list-decimal list-inside space-y-1 ml-3">
+                                        <li>Ensure you're logged in (GEODocs requires authentication)</li>
+                                        <li>Check browser console (F12) for JavaScript errors</li>
+                                        <li>Verify the shortcode is properly placed: <code class="bg-yellow-100 px-2 py-1 rounded">[geodocs]</code></li>
+                                    </ol>
+
+                                    <p class="mt-4"><strong>If you see 404 errors on REST API calls:</strong></p>
+                                    <ol class="list-decimal list-inside space-y-1 ml-3">
+                                        <li>Go to <strong>Settings → Permalinks</strong></li>
+                                        <li>Click <strong>"Save Changes"</strong> (even without changing anything)</li>
+                                        <li>This flushes rewrite rules and fixes REST API routes</li>
+                                    </ol>
+
+                                    <p class="mt-4"><strong>Test REST API:</strong></p>
+                                    <p class="text-sm">
+                                        Visit this URL while logged in:
+                                        <a href="<?php echo esc_url(rest_url('geodocs/v1/categories')); ?>"
+                                           target="_blank"
+                                           class="text-blue-600 hover:underline break-all">
+                                            <?php echo esc_url(rest_url('geodocs/v1/categories')); ?>
+                                        </a>
+                                    </p>
+                                    <p class="text-sm mt-1">You should see JSON data with categories. If you see a 404 error, flush permalinks.</p>
+                                </div>
                             </div>
                         </div>
 
