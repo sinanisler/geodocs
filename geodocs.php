@@ -1,4 +1,4 @@
-<?php
+<?php 
 /**
  * Plugin Name: GEODocs
  * Plugin URI: https://geopard.digital/
