@@ -484,7 +484,33 @@ class GEODocs {
         }
         .category-item {
             position: relative;
-            display:flex
+            display:flex;
+            transition: all 0.2s ease;
+        }
+        .category-item.drag-over-category {
+            background: rgba(59, 130, 246, 0.1);
+            border-radius: 0.375rem;
+            transform: scale(1.02);
+        }
+        .category-item.drag-over-category::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: #3b82f6;
+            border-radius: 2px;
+        }
+        .category-item .fa-grip-vertical {
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        .category-item:hover .fa-grip-vertical,
+        @media (max-width: 768px) {
+            .category-item .fa-grip-vertical {
+                opacity: 0.5 !important;
+            }
         }
         .category-actions {
             opacity: 0;
@@ -504,10 +530,13 @@ class GEODocs {
         @media (max-width: 768px) {
             .category-actions {
                 opacity: 1;
-                position: static;
-                transform: none;
-                box-shadow: none;
+                position: absolute;
+                right: 8px;
+                top: 50%;
+                transform: translateY(-50%);
                 background: transparent;
+                box-shadow: none;
+                z-index: 10;
             }
         }
         .category-menu-dropdown {
@@ -543,9 +572,13 @@ class GEODocs {
                 left: 50%;
                 top: 50%;
                 transform: translate(-50%, -50%);
-                min-width: 200px;
+                min-width: 220px;
                 box-shadow: 0 10px 25px rgba(0,0,0,0.3);
                 border: 2px solid #ddd;
+                border-radius: 12px;
+                z-index: 10002;
+            }
+            .category-menu-backdrop {
                 z-index: 10001;
             }
         }
@@ -662,6 +695,20 @@ class GeoDocsApp {
         if (typeof geodocs === 'undefined') {
             console.error('[GEODocs] ERROR: geodocs object not found! Check script enqueuing.');
             return;
+        }
+
+        // Load custom category order from localStorage
+        const storedCategories = localStorage.getItem('geodocs_custom_categories');
+        if (storedCategories) {
+            try {
+                const parsedCategories = JSON.parse(storedCategories);
+                if (Array.isArray(parsedCategories) && parsedCategories.length > 0) {
+                    geodocs.categories = parsedCategories;
+                    console.log('[GEODocs] Loaded custom category order from localStorage');
+                }
+            } catch (e) {
+                console.error('[GEODocs] Error parsing stored categories:', e);
+            }
         }
 
         this.renderApp();
@@ -828,14 +875,21 @@ class GeoDocsApp {
 
                 <!-- Mobile Categories Sheet -->
                 <div id="mobile-categories-sheet" class="geodocs-mobile-categories-sheet fixed inset-0 bg-black bg-opacity-50 z-50 hidden" onclick="app.toggleMobileCategories()">
-                    <div class="fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl max-h-[70vh] overflow-auto" onclick="event.stopPropagation()">
-                        <div class="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+                    <div class="fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl max-h-[70vh] overflow-hidden flex flex-col" onclick="event.stopPropagation()">
+                        <div class="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between z-10">
                             <h3 class="font-semibold text-black">Categories</h3>
-                            <button onclick="app.toggleMobileCategories()" class="text-gray-500 hover:text-black">
-                                <i class="fas fa-times text-xl"></i>
-                            </button>
+                            <div class="flex items-center gap-2">
+                                <button onclick="app.showAddCategoryDialog(); app.toggleMobileCategories();" 
+                                        class="text-gray-600 hover:text-black transition-colors p-1.5"
+                                        title="Add Category">
+                                    <i class="fas fa-plus text-lg"></i>
+                                </button>
+                                <button onclick="app.toggleMobileCategories()" class="text-gray-500 hover:text-black">
+                                    <i class="fas fa-times text-xl"></i>
+                                </button>
+                            </div>
                         </div>
-                        <div id="mobile-categories-list" class="p-4">
+                        <div id="mobile-categories-list" class="p-4 overflow-y-auto flex-1">
                             <!-- Categories rendered here -->
                         </div>
                     </div>
@@ -953,18 +1007,23 @@ class GeoDocsApp {
         `;
 
         // Add drag and drop support for each category
-        geodocs.categories.forEach(cat => {
+        geodocs.categories.forEach((cat, index) => {
             const isActive = this.selectedCategory === cat.id;
             const count = this.getCategoryDocCount(cat.id);
             html += `
                 <div class="group category-drop-zone category-item"
+                     draggable="true"
                      data-category-id="${cat.id}"
-                     ondragover="event.preventDefault(); this.classList.add('drag-over-category')"
-                     ondragleave="this.classList.remove('drag-over-category')"
+                     data-category-index="${index}"
+                     ondragstart="app.handleCategoryDragStart(event, ${cat.id})"
+                     ondragend="app.handleCategoryDragEnd(event)"
+                     ondragover="app.handleCategoryDragOver(event)"
+                     ondragleave="app.handleCategoryDragLeave(event)"
                      ondrop="app.handleCategoryDrop(event, ${cat.id})">
                     <button class="w-full px-3 py-2 rounded-md text-left transition-all relative ${isActive ? 'bg-black text-white font-medium' : 'text-gray-700 hover:bg-gray-100'}"
                             onclick="app.filterByCategory(${cat.id})">
                         <div class="flex items-center gap-2 pr-8">
+                            <i class="fas fa-grip-vertical text-xs text-gray-400 cursor-grab opacity-0 group-hover:opacity-100 transition-opacity mr-1" style="margin-left: -1rem; margin-right: 0.25rem;" title="Drag to reorder"></i>
                             <span class="text-base">${cat.icon}</span>
                             <span class="flex-1 truncate text-sm">${cat.name}</span>
                             <span class="text-xs ${isActive ? 'text-white' : 'text-gray-400'}">${count}</span>
@@ -1429,6 +1488,66 @@ class GeoDocsApp {
             this.loadDocuments();
             this.showToast('Category deleted successfully', 'success');
         }
+    }
+
+    // Drag and Drop Category Reordering
+    handleCategoryDragStart(event, categoryId) {
+        event.stopPropagation();
+        this.draggedCategoryId = categoryId;
+        event.currentTarget.style.opacity = '0.4';
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/html', event.currentTarget.innerHTML);
+    }
+
+    handleCategoryDragEnd(event) {
+        event.currentTarget.style.opacity = '1';
+        // Remove all drag-over classes
+        document.querySelectorAll('.drag-over-category').forEach(el => {
+            el.classList.remove('drag-over-category');
+        });
+    }
+
+    handleCategoryDragOver(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.dataTransfer.dropEffect = 'move';
+        event.currentTarget.classList.add('drag-over-category');
+        return false;
+    }
+
+    handleCategoryDragLeave(event) {
+        event.currentTarget.classList.remove('drag-over-category');
+    }
+
+    handleCategoryDrop(event, targetCategoryId) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.currentTarget.classList.remove('drag-over-category');
+
+        if (this.draggedCategoryId === targetCategoryId) {
+            return;
+        }
+
+        // Find the indices
+        const draggedIndex = geodocs.categories.findIndex(c => c.id === this.draggedCategoryId);
+        const targetIndex = geodocs.categories.findIndex(c => c.id === targetCategoryId);
+
+        if (draggedIndex === -1 || targetIndex === -1) {
+            return;
+        }
+
+        // Reorder the categories array
+        const [draggedCategory] = geodocs.categories.splice(draggedIndex, 1);
+        geodocs.categories.splice(targetIndex, 0, draggedCategory);
+
+        // Save to localStorage
+        localStorage.setItem('geodocs_custom_categories', JSON.stringify(geodocs.categories));
+
+        // Re-render categories
+        this.renderCategories();
+        this.showToast('Category order updated', 'success');
+
+        return false;
     }
 
     toggleViewMode() {
