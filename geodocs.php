@@ -526,6 +526,16 @@ class GEODocs {
         .category-menu-dropdown.active {
             display: block;
         }
+        .category-menu-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+        }
+        .category-menu-backdrop.active {
+            display: block;
+        }
         @media (max-width: 768px) {
             .category-menu-dropdown {
                 position: fixed;
@@ -536,7 +546,7 @@ class GEODocs {
                 min-width: 200px;
                 box-shadow: 0 10px 25px rgba(0,0,0,0.3);
                 border: 2px solid #ddd;
-                z-index: 10000;
+                z-index: 10001;
             }
         }
         #mobile-bottom-menu {
@@ -949,12 +959,13 @@ class GeoDocsApp {
                                     title="Options">
                                 <i class="fas fa-ellipsis-v text-sm text-gray-600"></i>
                             </button>
+                            <div id="category-menu-backdrop-${cat.id}" class="category-menu-backdrop" onclick="app.closeCategoryMenu(${cat.id})"></div>
                             <div id="category-menu-${cat.id}" class="category-menu-dropdown">
-                                <button onclick="event.stopPropagation(); app.renameCategory(${cat.id})"
+                                <button onclick="event.stopPropagation(); app.renameCategory(${cat.id}); app.closeCategoryMenu(${cat.id});"
                                         class="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 transition-colors">
                                     <i class="fas fa-pen text-xs mr-2"></i>Rename
                                 </button>
-                                <button onclick="event.stopPropagation(); app.deleteCategory(${cat.id})"
+                                <button onclick="event.stopPropagation(); app.deleteCategory(${cat.id}); app.closeCategoryMenu(${cat.id});"
                                         class="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors">
                                     <i class="fas fa-trash text-xs mr-2"></i>Delete
                                 </button>
@@ -1411,29 +1422,50 @@ class GeoDocsApp {
 
     toggleCategoryMenu(categoryId) {
         const menu = document.getElementById(`category-menu-${categoryId}`);
+        const backdrop = document.getElementById(`category-menu-backdrop-${categoryId}`);
         const allMenus = document.querySelectorAll('.category-menu-dropdown');
+        const allBackdrops = document.querySelectorAll('.category-menu-backdrop');
         
-        // Close all other menus
+        // Close all other menus and backdrops
         allMenus.forEach(m => {
             if (m !== menu) m.classList.remove('active');
         });
+        allBackdrops.forEach(b => {
+            if (b !== backdrop) b.classList.remove('active');
+        });
         
-        // Toggle current menu
-        if (menu) {
-            menu.classList.toggle('active');
-            
-            // Close when clicking outside
-            if (menu.classList.contains('active')) {
-                setTimeout(() => {
-                    document.addEventListener('click', function closeMenu(e) {
-                        if (!menu.contains(e.target)) {
-                            menu.classList.remove('active');
-                            document.removeEventListener('click', closeMenu);
-                        }
-                    });
-                }, 10);
+        // Toggle current menu and backdrop
+        if (menu && backdrop) {
+            const isActive = menu.classList.contains('active');
+            if (isActive) {
+                menu.classList.remove('active');
+                backdrop.classList.remove('active');
+            } else {
+                menu.classList.add('active');
+                backdrop.classList.add('active');
+                
+                // Close when clicking outside (for desktop)
+                const isMobile = window.innerWidth <= 768;
+                if (!isMobile) {
+                    setTimeout(() => {
+                        document.addEventListener('click', function closeMenu(e) {
+                            if (!menu.contains(e.target)) {
+                                menu.classList.remove('active');
+                                backdrop.classList.remove('active');
+                                document.removeEventListener('click', closeMenu);
+                            }
+                        });
+                    }, 10);
+                }
             }
         }
+    }
+
+    closeCategoryMenu(categoryId) {
+        const menu = document.getElementById(`category-menu-${categoryId}`);
+        const backdrop = document.getElementById(`category-menu-backdrop-${categoryId}`);
+        if (menu) menu.classList.remove('active');
+        if (backdrop) backdrop.classList.remove('active');
     }
 
     toggleMobileCategories() {
