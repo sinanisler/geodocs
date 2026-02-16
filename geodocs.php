@@ -984,9 +984,12 @@ class GeoDocsApp {
                 info: '#3B82F6'
             };
             
+            // Longer duration for mobile (especially for info/processing messages)
+            const duration = type === 'info' ? 4000 : (type === 'success' ? 3500 : 3000);
+            
             Toastify({
                 text: message,
-                duration: type === 'info' ? 2000 : 3000,
+                duration: duration,
                 gravity: 'top',
                 position: 'center', // Center for better mobile visibility
                 style: {
@@ -995,7 +998,8 @@ class GeoDocsApp {
                     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto',
                     fontSize: '14px',
                     padding: '12px 20px',
-                    boxShadow: '0 4px 6px rgba(0,0,0,0.2)'
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.2)',
+                    zIndex: '9999'
                 }
             }).showToast();
         } else {
@@ -1125,7 +1129,6 @@ class GeoDocsApp {
             this.processing = false;
             document.getElementById('upload-progress').classList.add('hidden');
             this.updateProgress(0);
-            this.loadDocuments();
             
             // Show completion notification (especially visible on mobile)
             const completedMsg = '✓ All uploads completed!';
@@ -1153,6 +1156,9 @@ class GeoDocsApp {
         this.updateProgress(progressPercent);
 
         await this.uploadFile(file);
+        
+        // Reload documents after each upload to show immediately (especially important on mobile)
+        await this.loadDocuments();
 
         setTimeout(() => this.processQueue(), 300);
     }
@@ -1179,7 +1185,7 @@ class GeoDocsApp {
             const result = await response.json();
             console.log('[GEODocs] Upload successful:', result);
             
-            // Show success notification with document title and category
+            // Show success notification with document title and category (longer duration for mobile)
             const categoryInfo = result.category ? ` → ${result.category.icon} ${result.category.name}` : '';
             this.showToast(`✓ ${result.title}${categoryInfo}`, 'success');
 
