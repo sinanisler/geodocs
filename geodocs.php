@@ -1537,6 +1537,16 @@ if (document.readyState === 'loading') {
     }
 
     /**
+     * Force uploads into the secure geodocs directory
+     */
+    public function custom_upload_dir($dirs) {
+        $dirs['subdir'] = '/geodocs';
+        $dirs['path'] = $dirs['basedir'] . '/geodocs';
+        $dirs['url'] = $dirs['baseurl'] . '/geodocs';
+        return $dirs;
+    }
+
+    /**
      * Handle image requests via custom query variable (works with cookie auth)
      */
     public function handle_image_request() {
@@ -1566,13 +1576,16 @@ if (document.readyState === 'loading') {
             wp_die('Unauthorized access', 'Forbidden', ['response' => 403]);
         }
 
-        $file_url = get_post_meta($doc_id, '_geodocs_file_url', true);
-        if (!$file_url) {
-            status_header(404);
-            wp_die('No file attached', 'Not Found', ['response' => 404]);
+        // Get explicit file path, fallback to old replacement method for legacy docs
+        $file_path = get_post_meta($doc_id, '_geodocs_file_path', true);
+        if (!$file_path) {
+            $file_url = get_post_meta($doc_id, '_geodocs_file_url', true);
+            if (!$file_url) {
+                status_header(404);
+                wp_die('No file attached', 'Not Found', ['response' => 404]);
+            }
+            $file_path = str_replace(wp_upload_dir()['baseurl'], wp_upload_dir()['basedir'], $file_url);
         }
-
-        $file_path = str_replace(wp_upload_dir()['baseurl'], wp_upload_dir()['basedir'], $file_url);
 
         if (!file_exists($file_path)) {
             status_header(404);
@@ -1582,7 +1595,8 @@ if (document.readyState === 'loading') {
         // Stream the file
         $mime_type = get_post_meta($doc_id, '_geodocs_file_type', true);
         
-        // Set headers for image display
+        // Force 200 OK header to override WordPress's automatic 404 assignment
+        status_header(200);
         header('Content-Type: ' . $mime_type);
         header('Content-Length: ' . filesize($file_path));
         header('Cache-Control: private, max-age=3600');
@@ -1614,12 +1628,15 @@ if (document.readyState === 'loading') {
             return new WP_Error('unauthorized', __('Unauthorized access', 'geodocs'), ['status' => 403]);
         }
 
-        $file_url = get_post_meta($id, '_geodocs_file_url', true);
-        if (!$file_url) {
-            return new WP_Error('no_file', __('No file attached', 'geodocs'), ['status' => 404]);
+        // Use explicit path
+        $file_path = get_post_meta($id, '_geodocs_file_path', true);
+        if (!$file_path) {
+            $file_url = get_post_meta($id, '_geodocs_file_url', true);
+            if (!$file_url) {
+                return new WP_Error('no_file', __('No file attached', 'geodocs'), ['status' => 404]);
+            }
+            $file_path = str_replace(wp_upload_dir()['baseurl'], wp_upload_dir()['basedir'], $file_url);
         }
-
-        $file_path = str_replace(wp_upload_dir()['baseurl'], wp_upload_dir()['basedir'], $file_url);
 
         if (!file_exists($file_path)) {
             return new WP_Error('file_missing', __('File not found on server', 'geodocs'), ['status' => 404]);
@@ -1627,7 +1644,11 @@ if (document.readyState === 'loading') {
 
         // Stream the file
         $mime_type = get_post_meta($id, '_geodocs_file_type', true);
+        
+        // Force 200 OK Header
+        status_header(200);
         header('Content-Type: ' . $mime_type);
+        header('Content-Disposition: attachment; filename="' . basename($file_path) . '"');
         header('Content-Length: ' . filesize($file_path));
         readfile($file_path);
         exit;
@@ -1773,8 +1794,10 @@ if (document.readyState === 'loading') {
             return new WP_Error('file_too_large', __('File too large', 'geodocs'), ['status' => 400]);
         }
 
-        // Upload file
+        // Force upload into the secure geodocs directory
+        add_filter('upload_dir', [$this, 'custom_upload_dir']);
         $upload = wp_handle_upload($file, ['test_form' => false]);
+        remove_filter('upload_dir', [$this, 'custom_upload_dir']);
 
         if (isset($upload['error'])) {
             return new WP_Error('upload_failed', $upload['error'], ['status' => 500]);
@@ -1814,8 +1837,9 @@ if (document.readyState === 'loading') {
             wp_set_post_terms($post_id, [$analysis['category']], 'geodocs_category');
         }
 
-        // Save file metadata
+        // Save file metadata - Save both URL and exact absolute Path
         update_post_meta($post_id, '_geodocs_file_url', $new_filename['url']);
+        update_post_meta($post_id, '_geodocs_file_path', $new_filename['file']);
         update_post_meta($post_id, '_geodocs_file_type', $file['type']);
         update_post_meta($post_id, '_geodocs_file_size', $file['size']);
         update_post_meta($post_id, '_geodocs_metadata', json_encode($analysis['metadata']));
