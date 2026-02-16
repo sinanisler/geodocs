@@ -39,6 +39,7 @@ class GEODocs {
         // WordPress hooks
         add_action('init', [$this, 'register_post_type']);
         add_action('init', [$this, 'register_taxonomy']);
+        add_action('init', [$this, 'update_htaccess_if_needed']);
         add_action('admin_menu', [$this, 'add_settings_page']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_scripts']);
         add_action('wp_enqueue_scripts', [$this, 'enqueue_frontend_scripts']);
@@ -86,14 +87,42 @@ class GEODocs {
      */
     private function create_secure_htaccess($dir) {
         $htaccess_file = $dir . '/.htaccess';
-        $htaccess_content = "# GEODocs Security - Deny direct access\n";
+        $htaccess_content = "# GEODocs Security\n";
         $htaccess_content .= "Options -Indexes\n";
+        $htaccess_content .= "# Allow direct access to images\n";
         $htaccess_content .= "<FilesMatch \"\\.(jpg|jpeg|png|gif|webp)$\">\n";
-        $htaccess_content .= "    Require all denied\n";
+        $htaccess_content .= "    Require all granted\n";
         $htaccess_content .= "</FilesMatch>\n";
 
-        if (!file_exists($htaccess_file)) {
-            file_put_contents($htaccess_file, $htaccess_content);
+        // Always update the .htaccess file to apply new rules
+        file_put_contents($htaccess_file, $htaccess_content);
+    }
+
+    /**
+     * Update .htaccess if needed (for existing installations)
+     */
+    public function update_htaccess_if_needed() {
+        $upload_dir = wp_upload_dir();
+        $geodocs_dir = $upload_dir['basedir'] . '/geodocs';
+        $htaccess_file = $geodocs_dir . '/.htaccess';
+        
+        // Check if directory exists and .htaccess needs updating
+        if (file_exists($geodocs_dir)) {
+            $needs_update = false;
+            
+            if (!file_exists($htaccess_file)) {
+                $needs_update = true;
+            } else {
+                $current_content = file_get_contents($htaccess_file);
+                // Check if it has the old "Require all denied" rule
+                if (strpos($current_content, 'Require all denied') !== false) {
+                    $needs_update = true;
+                }
+            }
+            
+            if ($needs_update) {
+                $this->create_secure_htaccess($geodocs_dir);
+            }
         }
     }
 
@@ -2175,13 +2204,16 @@ if (document.readyState === 'loading') {
             ];
         }
 
+        // Use direct file URL for reliable image loading
+        $file_url = get_post_meta($post->ID, '_geodocs_file_url', true);
+
         return [
             'id' => $post->ID,
             'title' => $post->post_title,
             'description' => $post->post_content,
             'categoryId' => $category_data ? $category_data['id'] : null,
             'category' => $category_data,
-            'fileUrl' => add_query_arg('geodocs_image', $post->ID, home_url('/')),
+            'fileUrl' => $file_url,
             'downloadUrl' => rest_url('geodocs/v1/download/' . $post->ID),
             'fileType' => get_post_meta($post->ID, '_geodocs_file_type', true),
             'fileSize' => get_post_meta($post->ID, '_geodocs_file_size', true),
