@@ -285,6 +285,9 @@ class GEODocs {
             if (loadModelsBtn) {
                 loadModelsBtn.addEventListener('click', async function() {
                     const modelsList = document.getElementById('models-list');
+                    const modelInput = document.getElementById('model');
+                    const modelDatalist = document.getElementById('model-datalist');
+                    
                     modelsList.classList.remove('hidden');
                     modelsList.innerHTML = '<p class=\"text-sm\"><i class=\"fas fa-spinner fa-spin\"></i> Loading models...</p>';
 
@@ -297,17 +300,17 @@ class GEODocs {
 
                         if (response.ok) {
                             const models = await response.json();
-                            const modelSelect = document.getElementById('model');
-                            modelSelect.innerHTML = '';
-
+                            
+                            // Clear and populate datalist (keep current input value intact)
+                            modelDatalist.innerHTML = '';
                             models.forEach(model => {
                                 const option = document.createElement('option');
                                 option.value = model.id;
                                 option.textContent = model.name;
-                                modelSelect.appendChild(option);
+                                modelDatalist.appendChild(option);
                             });
 
-                            modelsList.innerHTML = '<p class=\"text-sm text-green-600\"><i class=\"fas fa-check\"></i> Loaded ' + models.length + ' vision models</p>';
+                            modelsList.innerHTML = '<p class=\"text-sm text-green-600\"><i class=\"fas fa-check\"></i> Loaded ' + models.length + ' vision models. Start typing to see suggestions.</p>';
                         } else {
                             modelsList.innerHTML = '<p class=\"text-sm text-red-600\"><i class=\"fas fa-times\"></i> Failed to load models</p>';
                         }
@@ -728,7 +731,7 @@ class GeoDocsApp {
 
                 <!-- Mobile Bottom Menu -->
                 <div id="mobile-bottom-menu" class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 safe-area-inset-bottom">
-                    <div class="flex items-center justify-around py-3 px-2">
+                    <div class="flex items-center justify-around py-3 px-2 w-full">
                         <button onclick="document.getElementById('file-input').click()" 
                                 class="flex flex-col items-center gap-1 text-gray-600 hover:text-black transition-colors">
                             <i class="fas fa-upload text-xl"></i>
@@ -1027,15 +1030,18 @@ class GeoDocsApp {
             });
 
             if (!response.ok) {
-                throw new Error('Upload failed');
+                const errorData = await response.json().catch(() => null);
+                const errorMsg = errorData?.message || `Upload failed (${response.status})`;
+                throw new Error(errorMsg);
             }
 
             const result = await response.json();
-            this.showToast(`Uploaded: ${file.name}`, 'success');
+            console.log('[GEODocs] Upload successful:', result);
+            this.showToast(`✓ ${result.title || file.name}`, 'success');
 
         } catch (error) {
-            console.error('Upload error:', error);
-            this.showToast(`Failed to upload: ${file.name}`, 'error');
+            console.error('[GEODocs] Upload error:', error);
+            this.showToast(`✗ ${file.name}: ${error.message}`, 'error');
         }
     }
 
@@ -1936,8 +1942,12 @@ if (document.readyState === 'loading') {
         $model = get_option('geodocs_default_model', 'google/gemini-2.0-flash-exp:free');
 
         if (empty($api_key)) {
+            error_log('[GEODocs] AI analysis skipped: API key not configured');
             return new WP_Error('no_api_key', __('OpenRouter API key not configured', 'geodocs'), ['status' => 400]);
         }
+
+        // Log AI analysis attempt
+        error_log('[GEODocs] Starting AI analysis with model: ' . $model);
 
         // Read file and convert to base64
         $file_data = base64_encode(file_get_contents($file_path));
@@ -2008,12 +2018,14 @@ Return ONLY valid JSON in this exact format:
         ]);
 
         if (is_wp_error($response)) {
+            error_log('[GEODocs] AI API request failed: ' . $response->get_error_message());
             return $response;
         }
 
         $body = json_decode(wp_remote_retrieve_body($response), true);
 
         if (!isset($body['choices'][0]['message']['content'])) {
+            error_log('[GEODocs] AI API returned unexpected response: ' . print_r($body, true));
             return new WP_Error('api_error', __('Failed to analyze document', 'geodocs'), ['status' => 500]);
         }
 
@@ -2031,6 +2043,7 @@ Return ONLY valid JSON in this exact format:
         $analysis = json_decode($content, true);
 
         if (!$analysis || !isset($analysis['title'])) {
+            error_log('[GEODocs] Failed to parse AI response. Content: ' . $content);
             return new WP_Error('parse_error', __('Failed to parse AI response', 'geodocs'), ['status' => 500]);
         }
 
@@ -2046,6 +2059,7 @@ Return ONLY valid JSON in this exact format:
             }
         }
 
+        error_log('[GEODocs] AI analysis successful. Title: ' . $analysis['title']);
         return $analysis;
     }
 
@@ -2159,11 +2173,22 @@ Return ONLY valid JSON in this exact format:
 
         // Handle form submission
         if (isset($_POST['geodocs_save_settings']) && check_admin_referer('geodocs_settings')) {
-            update_option('geodocs_openrouter_api_key', sanitize_text_field($_POST['api_key']));
-            update_option('geodocs_default_model', sanitize_text_field($_POST['model']));
-            update_option('geodocs_site_name', sanitize_text_field($_POST['site_name']));
-            update_option('geodocs_max_file_size', absint($_POST['max_file_size']));
-            update_option('geodocs_allowed_file_types', sanitize_text_field($_POST['allowed_file_types']));
+            // Sanitize and save settings
+            if (isset($_POST['api_key'])) {
+                update_option('geodocs_openrouter_api_key', sanitize_text_field($_POST['api_key']));
+            }
+            if (isset($_POST['model'])) {
+                update_option('geodocs_default_model', sanitize_text_field($_POST['model']));
+            }
+            if (isset($_POST['site_name'])) {
+                update_option('geodocs_site_name', sanitize_text_field($_POST['site_name']));
+            }
+            if (isset($_POST['max_file_size'])) {
+                update_option('geodocs_max_file_size', absint($_POST['max_file_size']));
+            }
+            if (isset($_POST['allowed_file_types'])) {
+                update_option('geodocs_allowed_file_types', sanitize_text_field($_POST['allowed_file_types']));
+            }
             update_option('geodocs_enable_logging', isset($_POST['enable_logging']));
 
             echo '<div class="notice notice-success is-dismissible"><p>' . __('Settings saved successfully!', 'geodocs') . '</p></div>';
@@ -2355,23 +2380,27 @@ Return ONLY valid JSON in this exact format:
                                     <label for="model" class="block text-sm font-medium text-slate-700 mb-2">
                                         <?php _e('AI Model', 'geodocs'); ?>
                                     </label>
-                                    <select id="model"
-                                            name="model"
-                                            class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                                        <option value="google/gemini-2.0-flash-exp:free" <?php selected($model, 'google/gemini-2.0-flash-exp:free'); ?>>
-                                            Google Gemini 2.0 Flash (Free)
-                                        </option>
-                                        <option value="google/gemini-flash-1.5" <?php selected($model, 'google/gemini-flash-1.5'); ?>>
-                                            Google Gemini 1.5 Flash
-                                        </option>
-                                        <option value="anthropic/claude-3-haiku" <?php selected($model, 'anthropic/claude-3-haiku'); ?>>
-                                            Anthropic Claude 3 Haiku
-                                        </option>
-                                    </select>
+                                    <input type="text"
+                                           id="model"
+                                           name="model"
+                                           list="model-datalist"
+                                           value="<?php echo esc_attr($model); ?>"
+                                           class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                           placeholder="Enter model ID (e.g., google/gemini-2.0-flash-exp:free)">
+                                    <datalist id="model-datalist">
+                                        <option value="google/gemini-2.0-flash-exp:free">Google Gemini 2.0 Flash (Free)</option>
+                                        <option value="google/gemini-flash-1.5">Google Gemini 1.5 Flash</option>
+                                        <option value="anthropic/claude-3-haiku">Anthropic Claude 3 Haiku</option>
+                                        <option value="google/gemini-pro-1.5">Google Gemini Pro 1.5</option>
+                                        <option value="openai/gpt-4-vision-preview">OpenAI GPT-4 Vision</option>
+                                    </datalist>
+                                    <p class="mt-1 text-sm text-slate-500">
+                                        <?php _e('Enter the model ID directly or click "Load Available Models" below to see all options', 'geodocs'); ?>
+                                    </p>
                                     <div class="mt-3">
                                         <button type="button" id="load-models" class="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition">
                                             <i class="fas fa-sync-alt"></i>
-                                            <?php _e('Load All Available Models', 'geodocs'); ?>
+                                            <?php _e('Load Available Models', 'geodocs'); ?>
                                         </button>
                                     </div>
                                     <div id="models-list" class="hidden mt-4"></div>
