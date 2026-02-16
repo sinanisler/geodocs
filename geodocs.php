@@ -502,6 +502,10 @@ class GEODocs {
         @media (max-width: 768px) {
             .category-actions {
                 opacity: 1;
+                position: static;
+                transform: none;
+                box-shadow: none;
+                background: transparent;
             }
         }
         .category-menu-dropdown {
@@ -515,10 +519,23 @@ class GEODocs {
             border-radius: 0.375rem;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             min-width: 120px;
-            z-index: 100;
+            z-index: 1000;
         }
         .category-menu-dropdown.active {
             display: block;
+        }
+        @media (max-width: 768px) {
+            .category-menu-dropdown {
+                position: fixed;
+                right: auto;
+                left: 50%;
+                top: 50%;
+                transform: translate(-50%, -50%);
+                min-width: 200px;
+                box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+                border: 2px solid #ddd;
+                z-index: 10000;
+            }
         }
         #mobile-bottom-menu {
             display: none;
@@ -553,9 +570,17 @@ class GEODocs {
             border-radius: 0.5rem;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
             z-index: 50;
+            min-width: 180px;
         }
         .user-dropdown.active {
             display: block;
+        }
+        @media (max-width: 768px) {
+            .user-dropdown {
+                position: fixed;
+                right: 1rem;
+                top: 4rem;
+            }
         }
         ';
     }
@@ -620,29 +645,31 @@ class GeoDocsApp {
     renderApp() {
         const container = document.getElementById('geodocs-app');
         container.innerHTML = `
-            <div class="min-h-screen bg-white flex flex-col">
+            <div class="geodocs-app-container min-h-screen bg-white flex flex-col">
                 <!-- Top App Bar -->
-                <div class="bg-white shadow-sm sticky top-0 z-40 border-b border-gray-200">
+                <div class="geodocs-header bg-white shadow-sm sticky top-0 z-40 border-b border-gray-200">
                     <div class="px-6 py-3 flex items-center justify-between">
-                        <div class="flex items-center gap-3 flex-1">
-                            <div class="bg-black text-white rounded-lg">
-                                <img src="/wp-content/uploads/2026/02/cropped-godocs.png" width="44" />
+                        <a href="<?php echo esc_url(home_url('/')); ?>" class="geodocs-logo-link flex items-center gap-3 hover:opacity-80 transition-opacity no-underline" title="Go to Homepage" style="text-decoration: none;">
+                            <div class="geodocs-logo bg-black text-white rounded-lg">
+                                <img src="/wp-content/uploads/2026/02/cropped-godocs.png" width="44" alt="GEODocs Logo" />
                             </div>
                             <div>
-                                <h1 class="text-xl font-bold text-black">GEODocs</h1>
+                                <h1 class="geodocs-title text-xl font-bold text-black">GEODocs</h1>
                             </div>
-                            
+                        </a>
+                        
+                        <div class="flex-1">
                             <!-- Search Bar - Desktop (Left Side) -->
-                            <div class="desktop-search relative w-80 ml-6">
+                            <div class="geodocs-search-desktop desktop-search relative w-80 ml-6">
                                 <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                                 <input type="text" id="search-input" placeholder="Search documents..."
                                        class="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-1 focus:ring-black focus:border-black text-sm">
                             </div>
                         </div>
                         
-                        <div class="flex items-center gap-3">
+                        <div class="geodocs-header-actions flex items-center gap-3">
                             <!-- Action Buttons (Desktop Only) -->
-                            <div class="desktop-buttons flex items-center gap-3">
+                            <div class="geodocs-action-buttons desktop-buttons flex items-center gap-3">
                                 <button onclick="document.getElementById('file-input').click()"
                                         class="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors text-sm font-medium flex items-center gap-2">
                                     <i class="fas fa-upload"></i>
@@ -660,7 +687,7 @@ class GeoDocsApp {
                             <input type="file" id="camera-input" accept="image/*" capture="user" class="hidden">
 
                             <!-- User Avatar with Dropdown -->
-                            <div class="relative" id="user-menu-container">
+                            <div class="geodocs-user-menu relative" id="user-menu-container">
                                 <button onclick="app.toggleUserMenu()" class="bg-black text-white rounded-full w-9 h-9 flex items-center justify-center font-semibold text-sm hover:bg-gray-800 transition-colors">
                                     ${geodocs.currentUser.name.charAt(0).toUpperCase()}
                                 </button>
@@ -680,7 +707,7 @@ class GeoDocsApp {
                 </div>
 
                 <!-- Search Bar - Mobile -->
-                <div class="mobile-search bg-white border-b border-gray-200 px-4 py-3">
+                <div class="geodocs-search-mobile mobile-search bg-white border-b border-gray-200 px-4 py-3">
                     <div class="relative">
                         <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                         <input type="text" id="search-input-mobile" placeholder="Search documents..."
@@ -689,12 +716,12 @@ class GeoDocsApp {
                 </div>
 
                 <!-- Main Content Area: Sidebar + Main -->
-                <div class="flex flex-1 overflow-hidden main-content-wrapper">
+                <div class="geodocs-main-wrapper flex flex-1 overflow-hidden main-content-wrapper">
                     <!-- Left Sidebar (Hidden on Mobile) -->
-                    <div class="w-60 bg-white border-r border-gray-200 flex-col hidden md:flex">
+                    <div class="geodocs-sidebar w-60 bg-white border-r border-gray-200 flex-col hidden md:flex">
                         <!-- Categories List -->
-                        <div class="flex-1 overflow-y-auto py-2 px-2">
-                            <div class="flex items-center justify-between px-3 py-2 mb-1">
+                        <div class="geodocs-categories-list flex-1 overflow-y-auto py-2 px-2">
+                            <div class="geodocs-categories-header flex items-center justify-between px-3 py-2 mb-1">
                                 <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Categories</h3>
                                 <button onclick="app.showAddCategoryDialog()"
                                         class="text-gray-400 hover:text-black transition-colors"
@@ -708,7 +735,7 @@ class GeoDocsApp {
                         </div>
 
                         <!-- Upload Progress -->
-                        <div id="upload-progress" class="hidden border-t border-gray-200 p-3 bg-gray-50">
+                        <div id="upload-progress" class="geodocs-upload-progress hidden border-t border-gray-200 p-3 bg-gray-50">
                             <div class="flex items-center justify-between mb-2">
                                 <h4 class="text-xs font-semibold text-black flex items-center gap-2">
                                     <i class="fas fa-spinner geodocs-spin"></i>
@@ -723,9 +750,9 @@ class GeoDocsApp {
                     </div>
 
                     <!-- Main Content Area -->
-                    <div id="main-document-area" class="geodocs-drop-zone flex-1 overflow-y-auto bg-gray-50">
+                    <div id="main-document-area" class="geodocs-main-content geodocs-drop-zone flex-1 overflow-y-auto bg-gray-50">
                         <!-- Documents Header -->
-                        <div id="documents-header" class="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
+                        <div id="documents-header" class="geodocs-documents-header bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
                             <div>
                                 <h2 class="text-xl font-bold text-black" id="current-category-title">All Documents</h2>
                                 <p class="text-xs text-gray-500" id="documents-count">0 documents</p>
@@ -733,8 +760,8 @@ class GeoDocsApp {
                         </div>
 
                         <!-- Documents Grid (with drop zone) -->
-                        <div class="p-6" id="documents-container">
-                            <div id="documents-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 min-h-[200px]">
+                        <div class="geodocs-documents-container p-6" id="documents-container">
+                            <div id="documents-grid" class="geodocs-documents-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 min-h-[200px]">
                                 <!-- Documents rendered here -->
                             </div>
                         </div>
@@ -742,7 +769,7 @@ class GeoDocsApp {
                 </div>
 
                 <!-- Mobile Bottom Menu -->
-                <div id="mobile-bottom-menu" class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 safe-area-inset-bottom">
+                <div id="mobile-bottom-menu" class="geodocs-mobile-menu fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 safe-area-inset-bottom">
                     <div class="flex items-center justify-around py-3 px-2 w-full">
                         <button onclick="document.getElementById('file-input').click()" 
                                 class="flex flex-col items-center gap-1 text-gray-600 hover:text-black transition-colors">
@@ -768,7 +795,7 @@ class GeoDocsApp {
                 </div>
 
                 <!-- Mobile Categories Sheet -->
-                <div id="mobile-categories-sheet" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden" onclick="app.toggleMobileCategories()">
+                <div id="mobile-categories-sheet" class="geodocs-mobile-categories-sheet fixed inset-0 bg-black bg-opacity-50 z-50 hidden" onclick="app.toggleMobileCategories()">
                     <div class="fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl max-h-[70vh] overflow-auto" onclick="event.stopPropagation()">
                         <div class="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
                             <h3 class="font-semibold text-black">Categories</h3>
@@ -783,7 +810,7 @@ class GeoDocsApp {
                 </div>
 
                 <!-- Split Screen Viewer -->
-                <div id="split-viewer" class="geodocs-split-view fixed inset-0 bg-black bg-opacity-80 z-50">
+                <div id="split-viewer" class="geodocs-split-viewer geodocs-split-view fixed inset-0 bg-black bg-opacity-80 z-50">
                     <div class="bg-white h-full w-full flex">
                         <div class="flex-1 p-8 overflow-auto bg-black flex items-center justify-center">
                             <img id="viewer-image" class="max-w-full max-h-full object-contain" src="" alt="">
