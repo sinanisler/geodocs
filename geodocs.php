@@ -626,7 +626,7 @@ class GeoDocsApp {
                     <div class="px-6 py-3 flex items-center justify-between">
                         <div class="flex items-center gap-3 flex-1">
                             <div class="bg-black text-white rounded-lg p-2">
-                                <i class="fas fa-file-image text-xl"></i>
+                                <img src="/wp-content/uploads/2026/02/cropped-godocs.png" width="44" />
                             </div>
                             <div>
                                 <h1 class="text-xl font-bold text-black">GEODocs</h1>
