@@ -43,6 +43,8 @@ class GEODocs {
         add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_scripts']);
         add_action('wp_enqueue_scripts', [$this, 'enqueue_frontend_scripts']);
         add_action('rest_api_init', [$this, 'register_rest_routes']);
+        add_action('template_redirect', [$this, 'handle_image_request']);
+        add_filter('query_vars', [$this, 'add_query_vars']);
 
         // Shortcode
         add_shortcode('geodocs', [$this, 'render_frontend_shortcode']);
@@ -1112,7 +1114,7 @@ class GeoDocsApp {
                  ondragend="this.classList.remove('opacity-50')"
                  onclick="if (!event.defaultPrevented) app.viewDocument(${doc.id})">
                 <div class="aspect-video bg-gray-100 flex items-center justify-center overflow-hidden relative">
-                    <img src="${geodocs.restUrl}download/${doc.id}"
+                    <img src="${doc.fileUrl}"
                          class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                          alt="${doc.title}"
                          draggable="false">
@@ -1297,7 +1299,10 @@ class GeoDocsApp {
         const doc = this.currentDocuments.find(d => d.id === id);
         if (!doc) return;
 
-        document.getElementById('viewer-image').src = geodocs.restUrl + 'download/' + id;
+        const doc = this.currentDocuments.find(d => d.id === id);
+        if (!doc) return;
+
+        document.getElementById('viewer-image').src = doc.fileUrl;
         document.getElementById('viewer-details').innerHTML = `
             <h2 class="text-xl font-bold text-black mb-4">${doc.title}</h2>
             <div class="space-y-4">
@@ -1491,7 +1496,72 @@ if (document.readyState === 'loading') {
     }
 
     /**
-     * Secure file download endpoint
+     * Add custom query vars
+     */
+    public function add_query_vars($vars) {
+        $vars[] = 'geodocs_image';
+        return $vars;
+    }
+
+    /**
+     * Handle image requests via custom query variable (works with cookie auth)
+     */
+    public function handle_image_request() {
+        $doc_id = get_query_var('geodocs_image');
+        
+        if (!$doc_id) {
+            return;
+        }
+
+        // Check if user is logged in (cookie authentication)
+        if (!is_user_logged_in()) {
+            status_header(401);
+            wp_die('Unauthorized - Please log in', 'Unauthorized', ['response' => 401]);
+        }
+
+        $post = get_post($doc_id);
+
+        if (!$post || $post->post_type !== 'geodocs_document') {
+            status_header(404);
+            wp_die('Document not found', 'Not Found', ['response' => 404]);
+        }
+
+        // Check ownership - document owner OR admin
+        $current_user_id = get_current_user_id();
+        if ($post->post_author != $current_user_id && !current_user_can('manage_options')) {
+            status_header(403);
+            wp_die('Unauthorized access', 'Forbidden', ['response' => 403]);
+        }
+
+        $file_url = get_post_meta($doc_id, '_geodocs_file_url', true);
+        if (!$file_url) {
+            status_header(404);
+            wp_die('No file attached', 'Not Found', ['response' => 404]);
+        }
+
+        $file_path = str_replace(wp_upload_dir()['baseurl'], wp_upload_dir()['basedir'], $file_url);
+
+        if (!file_exists($file_path)) {
+            status_header(404);
+            wp_die('File not found on server', 'Not Found', ['response' => 404]);
+        }
+
+        // Stream the file
+        $mime_type = get_post_meta($doc_id, '_geodocs_file_type', true);
+        
+        // Set headers for image display
+        header('Content-Type: ' . $mime_type);
+        header('Content-Length: ' . filesize($file_path));
+        header('Cache-Control: private, max-age=3600');
+        header('Pragma: private');
+        
+        // Output the file
+        readfile($file_path);
+        exit;
+    }
+
+    /**
+     * Secure file download endpoint (REST API - for downloads, not image display)
      */
     public function download_document($request) {
         $id = $request->get_param('id');
@@ -1633,7 +1703,8 @@ if (document.readyState === 'loading') {
             'description' => $post->post_content,
             'categoryId' => $category_data ? $category_data['id'] : null,
             'category' => $category_data,
-            'fileUrl' => rest_url('geodocs/v1/download/' . $post->ID),
+            'fileUrl' => add_query_arg('geodocs_image', $post->ID, home_url('/')),
+            'downloadUrl' => rest_url('geodocs/v1/download/' . $post->ID),
             'fileType' => get_post_meta($post->ID, '_geodocs_file_type', true),
             'fileSize' => get_post_meta($post->ID, '_geodocs_file_size', true),
             'metadata' => json_decode(get_post_meta($post->ID, '_geodocs_metadata', true), true) ?: [],
