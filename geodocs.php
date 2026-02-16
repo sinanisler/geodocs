@@ -428,6 +428,8 @@ class GEODocs {
         }
         .geodocs-split-view.active {
             display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .geodocs-progress-step {
             opacity: 0.3;
@@ -863,7 +865,7 @@ class GeoDocsApp {
                 </div>
 
                 <!-- Profile Edit Modal -->
-                <div id="profile-edit-modal" class="geodocs-split-view fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center">
+                <div id="profile-edit-modal" class="geodocs-split-view fixed inset-0 bg-black bg-opacity-80 z-50">
                     <div class="bg-white rounded-2xl max-w-md w-full mx-4 p-6">
                         <div class="flex items-center justify-between mb-6">
                             <h2 class="text-2xl font-bold text-black">Edit Profile</h2>
