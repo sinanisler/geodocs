@@ -3,7 +3,7 @@
  * Plugin Name: GEODocs
  * Plugin URI: https://geopard.digital/
  * Description: AI-powered document organizer using OpenRouter & Gemini. Upload, analyze, and organize your documents with artificial intelligence.
- * Version: 0.3
+ * Version: 0.4
  * Author: Geopard Digital
  * Author URI: https://geopard.digital/
  * Requires PHP: 8.0
@@ -18,7 +18,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('GEODOCS_VERSION', '0.3');
+define('GEODOCS_VERSION', '0.4');
 define('GEODOCS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('GEODOCS_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('GEODOCS_PLUGIN_FILE', __FILE__);
