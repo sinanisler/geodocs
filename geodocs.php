@@ -625,7 +625,7 @@ class GeoDocsApp {
                 <div class="bg-white shadow-sm sticky top-0 z-40 border-b border-gray-200">
                     <div class="px-6 py-3 flex items-center justify-between">
                         <div class="flex items-center gap-3 flex-1">
-                            <div class="bg-black text-white rounded-lg p-2">
+                            <div class="bg-black text-white rounded-lg">
                                 <img src="/wp-content/uploads/2026/02/cropped-godocs.png" width="44" />
                             </div>
                             <div>
