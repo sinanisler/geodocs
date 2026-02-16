@@ -1024,7 +1024,7 @@ class GeoDocsApp {
                      ondrop="app.handleCategoryDrop(event, ${cat.id})">
                     <button class="w-full px-3 py-2 rounded-md text-left transition-all relative ${isActive ? 'bg-black text-white font-medium' : 'text-gray-700 hover:bg-gray-100'}"
                             onclick="app.filterByCategory(${cat.id})">
-                        <div class="flex items-center gap-2 pr-8">
+                        <div class="flex items-center gap-2 ">
                             <i class="fas fa-grip-vertical text-xs text-gray-400 cursor-grab opacity-0 group-hover:opacity-100 transition-opacity mr-1" style="margin-left: -1rem; margin-right: 0.25rem;" title="Drag to reorder"></i>
                             <span class="text-base">${cat.icon}</span>
                             <span class="flex-1 truncate text-sm">${cat.name}</span>
