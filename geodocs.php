@@ -391,32 +391,82 @@ class GEODocs {
      */
     private function get_frontend_inline_styles() {
         return '
+        #geodocs-app {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
         .geodocs-drop-zone {
-            border: 4px dashed #cbd5e1;
-            transition: all 0.3s;
+            transition: all 0.3s ease;
         }
         .geodocs-drop-zone.drag-over {
-            border-color: #3b82f6;
-            background-color: #eff6ff;
+            border-color: #3b82f6 !important;
+            background: linear-gradient(to bottom right, #dbeafe, #e0e7ff) !important;
+            transform: scale(1.02);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .category-drop-zone {
+            transition: all 0.2s ease;
+        }
+        .category-drop-zone.drag-over-category {
+            background: linear-gradient(to right, #dbeafe, #e0e7ff);
+            transform: scale(1.02);
+            border-radius: 0.5rem;
+        }
+        .category-drop-zone.drag-over-category button {
+            background: linear-gradient(to right, #3b82f6, #6366f1) !important;
+            color: white !important;
         }
         .geodocs-split-view {
             display: none;
+            animation: fadeIn 0.2s ease-in-out;
         }
         .geodocs-split-view.active {
             display: flex;
         }
         .geodocs-progress-step {
             opacity: 0.3;
+            transition: all 0.3s ease;
         }
         .geodocs-progress-step.active {
             opacity: 1;
+            transform: scale(1.05);
         }
         @keyframes pulse {
             0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+            50% { opacity: 0.7; }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
         .geodocs-pulse {
             animation: pulse 1.5s ease-in-out infinite;
+        }
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        #geodocs-app ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+        #geodocs-app ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 5px;
+        }
+        #geodocs-app ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 5px;
+        }
+        #geodocs-app ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        #geodocs-app [draggable="true"] {
+            cursor: grab;
+        }
+        #geodocs-app [draggable="true"]:active {
+            cursor: grabbing;
         }
         ';
     }
@@ -481,89 +531,132 @@ class GeoDocsApp {
     renderApp() {
         const container = document.getElementById('geodocs-app');
         container.innerHTML = `
-            <div class="max-w-7xl mx-auto p-6">
-                <!-- Header with Upload Zone -->
-                <div class="geodocs-drop-zone rounded-2xl p-12 mb-8 text-center cursor-pointer" id="drop-zone">
-                    <input type="file" id="file-input" multiple accept="image/*" class="hidden">
-                    <div class="mb-4">
-                        <i class="fas fa-cloud-upload-alt text-6xl text-blue-500"></i>
-                    </div>
-                    <h3 class="text-2xl font-bold text-slate-700 mb-2">Drop Images Here</h3>
-                    <p class="text-slate-500 mb-4">or click to browse from your device</p>
-                    <button class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-                        <i class="fas fa-camera mr-2"></i>Take Photo / Upload Image
-                    </button>
-                </div>
-
-                <!-- Upload Progress -->
-                <div id="upload-progress" class="hidden bg-white rounded-lg shadow-sm p-6 mb-8">
-                    <div class="flex items-center justify-between mb-4">
-                        <h4 class="font-semibold text-slate-800">Processing Documents</h4>
-                        <span id="queue-counter" class="text-sm text-slate-600">0/0</span>
-                    </div>
-                    <div class="space-y-3">
+            <div class="min-h-screen bg-slate-50 flex flex-col">
+                <!-- Top App Bar -->
+                <div class="bg-white shadow-sm sticky top-0 z-40 border-b border-slate-200">
+                    <div class="px-6 py-4 flex items-center justify-between">
                         <div class="flex items-center gap-4">
-                            <div class="geodocs-progress-step active" id="step-upload">
-                                <i class="fas fa-upload text-blue-600"></i>
-                                <span class="text-sm ml-2">Uploading file...</span>
+                            <div class="bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-xl p-3">
+                                <i class="fas fa-file-image text-2xl"></i>
+                            </div>
+                            <div>
+                                <h1 class="text-2xl font-bold text-slate-800">GEODocs</h1>
+                                <p class="text-sm text-slate-500">AI-Powered Document Organizer</p>
                             </div>
                         </div>
                         <div class="flex items-center gap-4">
-                            <div class="geodocs-progress-step" id="step-scan">
-                                <i class="fas fa-search text-blue-600"></i>
-                                <span class="text-sm ml-2">Scanning document...</span>
+                            <!-- Search Bar -->
+                            <div class="relative w-96">
+                                <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
+                                <input type="text" id="search-input" placeholder="Search documents..."
+                                       class="w-full pl-12 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <div class="text-right">
+                                    <p class="text-sm font-medium text-slate-700">${geodocs.currentUser.name}</p>
+                                    <p class="text-xs text-slate-500">${geodocs.currentUser.email}</p>
+                                </div>
+                                <div class="bg-gradient-to-br from-purple-500 to-pink-500 text-white rounded-full w-10 h-10 flex items-center justify-center font-bold">
+                                    ${geodocs.currentUser.name.charAt(0).toUpperCase()}
+                                </div>
                             </div>
                         </div>
-                        <div class="flex items-center gap-4">
-                            <div class="geodocs-progress-step" id="step-extract">
-                                <i class="fas fa-brain text-blue-600"></i>
-                                <span class="text-sm ml-2">Extracting metadata...</span>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-4">
-                            <div class="geodocs-progress-step" id="step-done">
-                                <i class="fas fa-check-circle text-green-600"></i>
-                                <span class="text-sm ml-2">Done!</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="w-full bg-slate-200 rounded-full h-2 mt-4">
-                        <div id="progress-bar" class="bg-blue-600 h-2 rounded-full transition-all" style="width: 0%"></div>
                     </div>
                 </div>
 
-                <!-- Search & Filters -->
-                <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
-                    <div class="flex gap-4">
-                        <input type="text" id="search-input" placeholder="Search documents..."
-                               class="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                        <button id="clear-search" class="px-4 py-2 text-slate-600 hover:text-slate-800">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                </div>
+                <!-- Main Content Area: Sidebar + Main -->
+                <div class="flex flex-1 overflow-hidden">
+                    <!-- Left Sidebar (Google Drive Style) -->
+                    <div class="w-72 bg-white border-r border-slate-200 flex flex-col">
+                        <!-- Upload Button -->
+                        <div class="p-4">
+                            <button onclick="document.getElementById('file-input').click()"
+                                    class="w-full px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center justify-center gap-3">
+                                <i class="fas fa-plus-circle text-xl"></i>
+                                New Upload
+                            </button>
+                            <input type="file" id="file-input" multiple accept="image/*" class="hidden">
+                        </div>
 
-                <!-- Categories -->
-                <div class="mb-6 overflow-x-auto">
-                    <div id="categories-filter" class="flex gap-3">
-                        <!-- Categories rendered here -->
-                    </div>
-                </div>
+                        <!-- Categories List -->
+                        <div class="flex-1 overflow-y-auto px-2">
+                            <div class="mb-4">
+                                <div class="flex items-center justify-between px-4 py-2">
+                                    <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider">Categories</h3>
+                                    <button onclick="app.showAddCategoryDialog()"
+                                            class="text-slate-400 hover:text-blue-600 transition-colors"
+                                            title="Add Category">
+                                        <i class="fas fa-plus-circle"></i>
+                                    </button>
+                                </div>
+                                <div id="categories-filter" class="space-y-1">
+                                    <!-- Categories rendered here -->
+                                </div>
+                            </div>
+                        </div>
 
-                <!-- Documents Grid -->
-                <div id="documents-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <!-- Documents rendered here -->
+                        <!-- Upload Progress -->
+                        <div id="upload-progress" class="hidden border-t border-slate-200 p-4 bg-slate-50">
+                            <div class="flex items-center justify-between mb-3">
+                                <h4 class="text-sm font-semibold text-slate-800">Processing</h4>
+                                <span id="queue-counter" class="text-xs text-slate-600 bg-white px-2 py-1 rounded">0/0</span>
+                            </div>
+                            <div class="w-full bg-slate-200 rounded-full h-2">
+                                <div id="progress-bar" class="bg-gradient-to-r from-blue-600 to-indigo-600 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Main Content Area -->
+                    <div class="flex-1 overflow-y-auto">
+                        <!-- Drop Zone Overlay (shown when empty or dragging) -->
+                        <div id="main-drop-zone" class="hidden p-12">
+                            <div class="geodocs-drop-zone bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl p-20 text-center cursor-pointer border-4 border-dashed border-blue-300 hover:border-blue-500 transition-all">
+                                <div class="mb-6">
+                                    <div class="inline-flex items-center justify-center w-32 h-32 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full shadow-xl mb-6">
+                                        <i class="fas fa-cloud-upload-alt text-6xl text-white"></i>
+                                    </div>
+                                </div>
+                                <h3 class="text-4xl font-bold text-slate-800 mb-4">Drop Images Here</h3>
+                                <p class="text-xl text-slate-600 mb-8">or click the "New Upload" button</p>
+                                <p class="text-sm text-slate-500">Supports: JPG, PNG, WEBP, GIF • Max ${geodocs.maxFileSize / 1024 / 1024}MB</p>
+                            </div>
+                        </div>
+
+                        <!-- Documents Header -->
+                        <div id="documents-header" class="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between">
+                            <div>
+                                <h2 class="text-2xl font-bold text-slate-800" id="current-category-title">All Documents</h2>
+                                <p class="text-sm text-slate-500" id="documents-count">0 documents</p>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <button onclick="app.toggleViewMode()"
+                                        class="px-4 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg transition-colors">
+                                    <i class="fas fa-th-large mr-2"></i>
+                                    <span id="view-mode-text">Grid</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Documents Grid -->
+                        <div class="p-8">
+                            <div id="documents-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+                                <!-- Documents rendered here -->
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Split Screen Viewer -->
-                <div id="split-viewer" class="geodocs-split-view fixed inset-0 bg-black bg-opacity-50 z-50">
-                    <div class="bg-white h-full max-w-7xl mx-auto flex">
-                        <div class="w-3/5 p-6 overflow-auto">
-                            <img id="viewer-image" class="w-full h-auto rounded-lg" src="" alt="">
+                <div id="split-viewer" class="geodocs-split-view fixed inset-0 bg-black bg-opacity-70 z-50 backdrop-blur-sm">
+                    <div class="bg-white h-full w-full flex">
+                        <div class="flex-1 p-8 overflow-auto bg-slate-900 flex items-center justify-center">
+                            <img id="viewer-image" class="max-w-full max-h-full object-contain rounded-lg shadow-2xl" src="" alt="">
                         </div>
-                        <div class="w-2/5 bg-slate-50 p-6 overflow-auto border-l">
-                            <button id="close-viewer" class="mb-4 text-slate-600 hover:text-slate-800">
-                                <i class="fas fa-times text-2xl"></i>
+                        <div class="w-1/3 bg-white p-8 overflow-auto border-l border-slate-200">
+                            <button id="close-viewer" class="mb-6 px-4 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg transition-colors flex items-center gap-2">
+                                <i class="fas fa-times"></i>
+                                Close
                             </button>
                             <div id="viewer-details">
                                 <!-- Details rendered here -->
@@ -571,8 +664,6 @@ class GeoDocsApp {
                         </div>
                     </div>
                 </div>
-            </div>
-        `;
 
         this.renderCategories();
     }
@@ -580,65 +671,117 @@ class GeoDocsApp {
     renderCategories() {
         const container = document.getElementById('categories-filter');
         let html = `
-            <button class="px-4 py-2 rounded-lg font-medium ${!this.selectedCategory ? 'bg-blue-600 text-white' : 'bg-white text-slate-700'} hover:shadow-md transition"
+            <button class="group w-full px-4 py-3 rounded-lg text-left transition-all ${!this.selectedCategory ? 'bg-blue-100 text-blue-700 font-semibold' : 'text-slate-700 hover:bg-slate-100'}"
                     onclick="app.filterByCategory(null)">
-                All Documents
+                <div class="flex items-center gap-3">
+                    <div class="${!this.selectedCategory ? 'bg-blue-600' : 'bg-slate-400 group-hover:bg-slate-500'} text-white rounded-lg p-2 transition-colors">
+                        <i class="fas fa-th-large"></i>
+                    </div>
+                    <span class="flex-1">All Documents</span>
+                    <span class="text-xs ${!this.selectedCategory ? 'text-blue-600 font-semibold' : 'text-slate-400'}">${this.currentDocuments.length}</span>
+                </div>
             </button>
         `;
 
+        // Add drag and drop support for each category
         geodocs.categories.forEach(cat => {
             const isActive = this.selectedCategory === cat.id;
+            const count = this.getCategoryDocCount(cat.id);
             html += `
-                <button class="px-4 py-2 rounded-lg font-medium ${isActive ? 'bg-blue-600 text-white' : 'bg-white text-slate-700'} hover:shadow-md transition"
-                        onclick="app.filterByCategory(${cat.id})">
-                    <span class="mr-2">${cat.icon}</span>
-                    ${cat.name}
-                </button>
+                <div class="group category-drop-zone"
+                     data-category-id="${cat.id}"
+                     ondragover="event.preventDefault(); this.classList.add('drag-over-category')"
+                     ondragleave="this.classList.remove('drag-over-category')"
+                     ondrop="app.handleCategoryDrop(event, ${cat.id})">
+                    <button class="w-full px-4 py-3 rounded-lg text-left transition-all ${isActive ? 'bg-blue-100 text-blue-700 font-semibold' : 'text-slate-700 hover:bg-slate-100'}"
+                            onclick="app.filterByCategory(${cat.id})">
+                        <div class="flex items-center gap-3">
+                            <span class="text-2xl">${cat.icon}</span>
+                            <span class="flex-1 truncate">${cat.name}</span>
+                            <span class="text-xs ${isActive ? 'text-blue-600 font-semibold' : 'text-slate-400'}">${count}</span>
+                            <button onclick="event.stopPropagation(); app.editCategory(${cat.id})"
+                                    class="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-blue-600">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                        </div>
+                    </button>
+                </div>
             `;
         });
 
         container.innerHTML = html;
     }
 
+    getCategoryDocCount(categoryId) {
+        // This will be updated after loading documents
+        const docs = this.currentDocuments.filter(doc => doc.category && doc.category.id === categoryId);
+        return docs.length;
+    }
+
     setupEventListeners() {
-        const dropZone = document.getElementById('drop-zone');
         const fileInput = document.getElementById('file-input');
+        const mainDropZone = document.getElementById('main-drop-zone');
 
-        dropZone.addEventListener('click', () => fileInput.click());
-
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('drag-over');
-        });
-
-        dropZone.addEventListener('dragleave', () => {
-            dropZone.classList.remove('drag-over');
-        });
-
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('drag-over');
-            this.handleFiles(e.dataTransfer.files);
-        });
-
+        // File input change
         fileInput.addEventListener('change', (e) => {
             this.handleFiles(e.target.files);
+            e.target.value = ''; // Reset input
         });
 
-        document.getElementById('search-input').addEventListener('input', (e) => {
-            this.searchQuery = e.target.value;
-            this.loadDocuments();
+        // Make main drop zone clickable
+        if (mainDropZone) {
+            mainDropZone.addEventListener('click', () => fileInput.click());
+
+            // Drag and drop on main area
+            document.body.addEventListener('dragover', (e) => {
+                if (e.dataTransfer.types.includes('Files')) {
+                    e.preventDefault();
+                    mainDropZone.classList.remove('hidden');
+                    mainDropZone.querySelector('.geodocs-drop-zone').classList.add('drag-over');
+                }
+            });
+
+            document.body.addEventListener('dragleave', (e) => {
+                if (e.target === document.body) {
+                    mainDropZone.querySelector('.geodocs-drop-zone')?.classList.remove('drag-over');
+                }
+            });
+
+            document.body.addEventListener('drop', (e) => {
+                if (e.dataTransfer.files.length > 0) {
+                    e.preventDefault();
+                    mainDropZone.querySelector('.geodocs-drop-zone')?.classList.remove('drag-over');
+                    this.handleFiles(e.dataTransfer.files);
+                }
+            });
+        }
+
+        // Search functionality
+        const searchInput = document.getElementById('search-input');
+        let searchTimeout;
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                this.searchQuery = e.target.value;
+                this.loadDocuments();
+            }, 300); // Debounce search
         });
 
-        document.getElementById('clear-search').addEventListener('click', () => {
-            document.getElementById('search-input').value = '';
-            this.searchQuery = '';
-            this.loadDocuments();
-        });
-
+        // Close split viewer
         document.getElementById('close-viewer').addEventListener('click', () => {
             document.getElementById('split-viewer').classList.remove('active');
         });
+
+        // Load categories from localStorage if available
+        const savedCategories = localStorage.getItem('geodocs_custom_categories');
+        if (savedCategories) {
+            try {
+                geodocs.categories = JSON.parse(savedCategories);
+                console.log('[GEODocs] Loaded custom categories from localStorage');
+            } catch (e) {
+                console.error('[GEODocs] Error loading custom categories:', e);
+            }
+        }
     }
 
     handleFiles(files) {
@@ -758,44 +901,165 @@ class GeoDocsApp {
 
     renderDocuments() {
         const container = document.getElementById('documents-grid');
+        const mainDropZone = document.getElementById('main-drop-zone');
+
+        // Update document count
+        document.getElementById('documents-count').textContent = `${this.currentDocuments.length} document${this.currentDocuments.length !== 1 ? 's' : ''}`;
 
         if (this.currentDocuments.length === 0) {
-            container.innerHTML = `
-                <div class="col-span-full text-center py-12 text-slate-500">
-                    <i class="fas fa-inbox text-6xl mb-4"></i>
-                    <p class="text-xl">No documents found</p>
-                </div>
-            `;
+            mainDropZone.classList.remove('hidden');
+            container.innerHTML = '';
             return;
         }
 
+        mainDropZone.classList.add('hidden');
+
         container.innerHTML = this.currentDocuments.map(doc => `
-            <div class="bg-white rounded-lg shadow-sm overflow-hidden cursor-pointer hover:shadow-lg transition"
-                 onclick="app.viewDocument(${doc.id})">
-                <div class="aspect-video bg-slate-100 flex items-center justify-center overflow-hidden">
+            <div class="group bg-white rounded-2xl shadow-sm overflow-hidden cursor-move hover:shadow-xl transition-all duration-300 border border-slate-200 hover:border-blue-300"
+                 draggable="true"
+                 ondragstart="event.dataTransfer.setData('document-id', ${doc.id}); this.classList.add('opacity-50')"
+                 ondragend="this.classList.remove('opacity-50')"
+                 onclick="if (!event.defaultPrevented) app.viewDocument(${doc.id})">
+                <div class="aspect-video bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center overflow-hidden relative">
                     <img src="${geodocs.restUrl}download/${doc.id}"
-                         class="w-full h-full object-cover"
-                         alt="${doc.title}">
+                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                         alt="${doc.title}"
+                         draggable="false">
+                    <div class="absolute top-3 right-3 bg-white bg-opacity-90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-medium text-slate-700">
+                        <i class="fas fa-image mr-1"></i>
+                        ${doc.fileType ? doc.fileType.split('/')[1].toUpperCase() : 'IMG'}
+                    </div>
+                    <div class="absolute top-3 left-3 bg-slate-800 bg-opacity-70 backdrop-blur-sm text-white px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                        <i class="fas fa-grip-vertical mr-1"></i>
+                        Drag to move
+                    </div>
                 </div>
-                <div class="p-4">
-                    <h3 class="font-semibold text-slate-800 mb-2">${doc.title}</h3>
-                    <p class="text-sm text-slate-600 line-clamp-2">${doc.description}</p>
-                    ${doc.category ? `
-                        <div class="mt-3">
-                            <span class="${doc.category.color} text-white text-xs px-2 py-1 rounded">
-                                ${doc.category.icon} ${doc.category.name}
+                <div class="p-5">
+                    <h3 class="font-bold text-slate-800 mb-2 text-base truncate">${doc.title}</h3>
+                    <p class="text-sm text-slate-600 line-clamp-2 mb-3">${doc.description}</p>
+                    <div class="flex items-center justify-between">
+                        ${doc.category ? `
+                            <span class="${doc.category.color} text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow-sm flex items-center gap-1">
+                                <span>${doc.category.icon}</span>
+                                <span>${doc.category.name}</span>
                             </span>
-                        </div>
-                    ` : ''}
+                        ` : '<span class="text-xs text-slate-400">No category</span>'}
+                        <span class="text-xs text-slate-400">
+                            <i class="fas fa-clock mr-1"></i>
+                            ${new Date(doc.createdAt * 1000).toLocaleDateString()}
+                        </span>
+                    </div>
                 </div>
             </div>
         `).join('');
+
+        // Re-render categories to update counts
+        this.renderCategories();
     }
 
     filterByCategory(categoryId) {
         this.selectedCategory = categoryId;
+
+        // Update header title
+        const titleEl = document.getElementById('current-category-title');
+        if (categoryId === null) {
+            titleEl.textContent = 'All Documents';
+        } else {
+            const cat = geodocs.categories.find(c => c.id === categoryId);
+            if (cat) {
+                titleEl.innerHTML = `<span class="text-2xl mr-2">${cat.icon}</span>${cat.name}`;
+            }
+        }
+
         this.renderCategories();
         this.loadDocuments();
+    }
+
+    // Drag and Drop functionality
+    handleCategoryDrop(event, categoryId) {
+        event.preventDefault();
+        event.currentTarget.classList.remove('drag-over-category');
+
+        const docId = event.dataTransfer.getData('document-id');
+        if (docId) {
+            this.moveDocumentToCategory(parseInt(docId), categoryId);
+        }
+    }
+
+    async moveDocumentToCategory(docId, categoryId) {
+        try {
+            const response = await fetch(geodocs.restUrl + 'documents/' + docId, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-WP-Nonce': geodocs.nonce
+                },
+                body: JSON.stringify({ categoryId: categoryId })
+            });
+
+            if (response.ok) {
+                console.log('[GEODocs] Document moved to category:', categoryId);
+                this.loadDocuments();
+            }
+        } catch (error) {
+            console.error('[GEODocs] Error moving document:', error);
+        }
+    }
+
+    // Category Management
+    showAddCategoryDialog() {
+        const name = prompt('Category Name:');
+        if (!name) return;
+
+        const icon = prompt('Category Icon (emoji):') || '📁';
+        const color = prompt('Category Color (Tailwind class like bg-blue-500):') || 'bg-slate-500';
+
+        this.addCategory(name, icon, color);
+    }
+
+    async addCategory(name, icon, color) {
+        // For now, store in localStorage since we need backend support
+        const newCategory = {
+            id: Date.now(),
+            name: name,
+            icon: icon,
+            color: color,
+            slug: name.toLowerCase().replace(/\s+/g, '-')
+        };
+
+        geodocs.categories.push(newCategory);
+        localStorage.setItem('geodocs_custom_categories', JSON.stringify(geodocs.categories));
+
+        this.renderCategories();
+        console.log('[GEODocs] Category added:', newCategory);
+    }
+
+    editCategory(categoryId) {
+        const cat = geodocs.categories.find(c => c.id === categoryId);
+        if (!cat) return;
+
+        const action = confirm(`Edit "${cat.name}"?\n\nOK = Edit | Cancel = Delete`);
+
+        if (action) {
+            const newName = prompt('New category name:', cat.name);
+            if (newName) {
+                cat.name = newName;
+                localStorage.setItem('geodocs_custom_categories', JSON.stringify(geodocs.categories));
+                this.renderCategories();
+            }
+        } else {
+            if (confirm(`Delete category "${cat.name}"?`)) {
+                geodocs.categories = geodocs.categories.filter(c => c.id !== categoryId);
+                localStorage.setItem('geodocs_custom_categories', JSON.stringify(geodocs.categories));
+                this.renderCategories();
+                this.loadDocuments();
+            }
+        }
+    }
+
+    toggleViewMode() {
+        // Placeholder for grid/list view toggle
+        console.log('[GEODocs] Toggle view mode');
     }
 
     async viewDocument(id) {
